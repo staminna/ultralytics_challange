@@ -138,8 +138,14 @@ Create a Cloud Build trigger for building and deploying the application.
 # Using gcloud CLI
 
 # Add storage admin role to the service account
+# Grant Firestore permissions for the native-db database
+
 gcloud projects add-iam-policy-binding ultralytics-54321 \
     --member="serviceAccount:ultralytics-challange@ultralytics-54321.iam.gserviceaccount.com" \
-    --role="roles/storage.admin"
+    --role="roles/datastore.user"
+
+gcloud projects add-iam-policy-binding ultralytics-54321 \
+    --member="serviceAccount:ultralytics-challange@ultralytics-54321.iam.gserviceaccount.com" \
+    --role="roles/firebase.admin"
 
 replace 54321 with your ID.

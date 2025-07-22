@@ -9,13 +9,13 @@ settings = get_settings()
 
 @lru_cache()
 def get_firestore_client():
-    """Get a Firestore client instance."""
+    """Get a Firestore client instance using the native-db database."""
     try:
         # If running locally with credentials file
         if os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
-            return firestore.Client()
+            return firestore.Client(database="native-db")
         # If running on GCP (e.g., Cloud Run)
-        return firestore.Client(project=settings.GCP_PROJECT_ID)
+        return firestore.Client(project=settings.GCP_PROJECT_ID, database="native-db")
     except Exception as e:
         print(f"Error initializing Firestore client: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to connect to Firestore: {str(e)}")
