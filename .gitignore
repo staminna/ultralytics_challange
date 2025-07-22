@@ -1,0 +1,81 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Environment
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# GCP credentials
+backend/service-account-key.json
+
+# Project specific
+*.db
+
+# Conda
+.conda/
+
+# Sample images and datasets (downloaded dynamically)
+backend/sample_images/
+backend/datasets/
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+
+# Model files (large, can be re-downloaded)
+*.pt
+*.pth
+*.onnx
+*.pkl
+*.h5
+
+# Logs and temporary files
+*.log
+backend/server.log
+backend/prediction_result.jpg
+
+# Test and demo scripts (temporary)
+backend/test_*.py
+backend/*-demo.sh
+backend/create_*.py
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
