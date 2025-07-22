@@ -132,6 +132,61 @@ def generate_dataset_name(dir_name: str) -> str:
     
     return name
 
+def get_existing_datasets() -> dict:
+    """Get existing datasets to prevent duplicates."""
+    try:
+        response = requests.get(f"{API_BASE_URL}/datasets/", timeout=10)
+        if response.status_code == 200:
+            datasets = response.json().get('datasets', [])
+            existing = {}
+            for ds in datasets:
+                # Create multiple normalized versions for comparison
+                name = ds['name'].lower()
+                normalized_variants = [
+                    name,
+                    name.replace(' ', '_'),
+                    name.replace('_', ' '),
+                    name.replace('-', '_'),
+                    name.replace(' ', '').replace('_', '').replace('-', '')
+                ]
+                
+                for variant in normalized_variants:
+                    existing[variant] = {
+                        'id': ds['id'],
+                        'name': ds['name'],
+                        'image_count': ds.get('image_count', 0),
+                        'status': ds.get('status', 'unknown'),
+                        'created_at': ds.get('created_at', '')
+                    }
+            return existing
+        return {}
+    except Exception as e:
+        print(f"⚠️  Could not fetch existing datasets: {e}")
+        return {}
+
+def should_upload_dataset(dir_name: str, existing_datasets: dict) -> tuple[bool, str]:
+    """Check if dataset should be uploaded to prevent duplicates."""
+    # Create normalized versions of the directory name
+    dir_normalized = dir_name.lower()
+    dir_variants = [
+        dir_normalized,
+        dir_normalized.replace(' ', '_'),
+        dir_normalized.replace('_', ' '),
+        dir_normalized.replace('-', '_'),
+        dir_normalized.replace(' ', '').replace('_', '').replace('-', '')
+    ]
+    
+    # Check against all existing datasets
+    for variant in dir_variants:
+        if variant in existing_datasets:
+            existing = existing_datasets[variant]
+            if existing['image_count'] > 0:
+                return False, f"Dataset '{existing['name']}' already exists with {existing['image_count']} images"
+            else:
+                return True, f"Replacing failed dataset '{existing['name']}' (0 images)"
+    
+    return True, "New dataset"
+
 def scan_and_upload_datasets():
     """Scan for datasets and upload them dynamically."""
     print("🎯 Dynamic Dataset Scanner & Uploader")
@@ -187,6 +242,9 @@ def scan_and_upload_datasets():
             size_mb = path.stat().st_size / 1024 / 1024
             print(f"  {i}. {path.name} - ZIP file, {size_mb:.1f} MB ({status})")
     
+    # Get existing datasets
+    existing_datasets = get_existing_datasets()
+    
     # Upload valid datasets
     uploaded = 0
     failed = 0
@@ -198,6 +256,12 @@ def scan_and_upload_datasets():
         
         path = candidate['path']
         dataset_name = generate_dataset_name(candidate['name'])
+        
+        # Check if dataset should be uploaded
+        should_upload, reason = should_upload_dataset(dataset_name, existing_datasets)
+        if not should_upload:
+            print(f"\n⏭️  Skipping {dataset_name}: {reason}")
+            continue
         
         print(f"\n📂 Processing: {path.name}")
         print(f"   Generated name: {dataset_name}")
