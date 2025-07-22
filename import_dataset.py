@@ -9,10 +9,12 @@ Usage:
 """
 
 import argparse
-import requests
-import sys
 import os
+import sys
 from pathlib import Path
+
+import requests
+
 
 def import_dataset(zip_path: str, name: str, description: str = None, classes: list = None, api_url: str = "http://localhost:8000"):
     """Import a YOLO dataset via API."""

@@ -4,9 +4,9 @@ Create 100 Hotels Dataset - Expands the existing 50-item dataset to 100 items
 """
 
 import os
+import random
 import shutil
 from pathlib import Path
-import random
 
 # Source and destination paths
 SOURCE_DIR = Path("backend/datasets/50_items_yolo_london_hotels")

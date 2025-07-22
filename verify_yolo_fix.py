@@ -6,12 +6,13 @@ This script specifically checks if the YOLO import service is correctly handling
 images in train/val subdirectories and their corresponding labels.
 """
 
-import os
-import requests
 import json
+import os
 import time
 import zipfile
 from pathlib import Path
+
+import requests
 from tabulate import tabulate
 
 # Configuration

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Clean up duplicate datasets with improved timeout handling."""
 
-import requests
-from collections import defaultdict
 import json
 import time
+from collections import defaultdict
+
+import requests
 
 API_BASE_URL = "http://localhost:8000/api/v1"
 

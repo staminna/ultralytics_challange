@@ -3,8 +3,9 @@
 Clean up failed datasets (those with 0 images) to make room for fresh uploads.
 """
 
-import requests
 import json
+
+import requests
 
 API_BASE_URL = "http://localhost:8000/api/v1"
 

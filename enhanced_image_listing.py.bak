@@ -7,21 +7,22 @@ from the dataset annotation service. It provides a visual representation of the
 images and their associated labels, making it easier to verify the data.
 """
 
+import argparse
+import base64
+import io
+import json
+import logging
 import os
 import sys
-import requests
-import json
+import tempfile
 import time
 from pathlib import Path
-import tempfile
-from PIL import Image, ImageDraw, ImageFont
-import io
-import base64
+
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
 import numpy as np
-import argparse
-import logging
+import requests
+from matplotlib.patches import Rectangle
+from PIL import Image, ImageDraw, ImageFont
 from tabulate import tabulate
 
 # Configure logging

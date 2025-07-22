@@ -4,10 +4,11 @@ Upload additional London hotel images from sample_images folder.
 These are raw images without YOLO labels.
 """
 
-import requests
 import os
-from pathlib import Path
 import time
+from pathlib import Path
+
+import requests
 
 API_BASE = "http://localhost:8000/api/v1"
 IMAGES_PATH = Path("backend/datasets/sample_images/london_hotels")

@@ -5,11 +5,12 @@ This script will upload both ZIP files and create ZIPs from directories.
 """
 
 import os
-import requests
-import zipfile
 import tempfile
-from pathlib import Path
 import time
+import zipfile
+from pathlib import Path
+
+import requests
 
 # Configuration
 API_BASE_URL = "http://localhost:8000/api/v1"

@@ -3,9 +3,10 @@
 Debug script to test YOLO dataset upload and see detailed logs.
 """
 
-import requests
 import json
 from pathlib import Path
+
+import requests
 
 # Configuration
 API_BASE_URL = "http://localhost:8000/api/v1"

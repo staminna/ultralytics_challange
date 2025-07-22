@@ -4,14 +4,15 @@ Furniture Classifier for YOLO Dataset
 Analyzes hotel images and bounding boxes to classify furniture types based on dimensions
 """
 
-import json
 import argparse
-import requests
+import json
 import logging
-from pathlib import Path
-from PIL import Image
 from io import BytesIO
-from typing import Dict, List, Any, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import requests
+from PIL import Image
 
 # Configure logging
 logging.basicConfig(

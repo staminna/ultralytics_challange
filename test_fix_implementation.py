@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Test script to verify the fix for YOLO import service with train/val subdirectories."""
 
-import os
-import zipfile
-import requests
-import time
 import json
-from pathlib import Path
+import os
 import shutil
+import time
+import zipfile
+from pathlib import Path
+
+import requests
 
 # Configuration
 API_URL = "http://localhost:8000/api/v1"

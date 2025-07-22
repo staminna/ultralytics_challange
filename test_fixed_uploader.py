@@ -3,8 +3,9 @@
 Test the fixed uploader to ensure it processes all images and prevents duplicates.
 """
 
-import requests
 import json
+
+import requests
 
 API_BASE_URL = "http://localhost:8000/api/v1"
 

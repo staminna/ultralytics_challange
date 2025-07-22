@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """Test script for YOLO dataset import with train/val subdirectories."""
 
-import os
-import zipfile
-import requests
-import time
 import json
+import os
+import time
+import zipfile
 from pathlib import Path
+
+import requests
 
 # Configuration
 API_URL = "http://localhost:8000/api/v1"
-DATASET_DIR = "50_items_yolo_london_hotels"
+DATASET_DIR = "backend/datasets"
 OUTPUT_ZIP = "test_london_hotels_yolo.zip"
 DATASET_NAME = "London Hotels Test Import"
 DATASET_DESC = "Test import of London Hotels dataset with train/val subdirectories"
@@ -63,7 +64,7 @@ def check_dataset_status(dataset_id):
     """Check the status of a dataset import."""
     print(f"Checking status of dataset {dataset_id}...")
     
-    url = f"{API_URL}/datasets/{dataset_id}/import/status"
+    url = f"{API_URL}/datasets/import/status/{dataset_id}"
     
     max_attempts = 30
     attempt = 0
@@ -132,15 +133,17 @@ def get_dataset_images(dataset_id):
         print(f"❌ Error getting images: {str(e)}")
         return []
 
-def analyze_dataset_structure():
+def analyze_dataset_structure(directory_path=None):
     """Analyze the structure of the dataset directory."""
-    dataset_path = Path(DATASET_DIR)
+    if directory_path is None:
+        directory_path = DATASET_DIR
+    dataset_path = Path(directory_path)
     
     if not dataset_path.exists():
-        print(f"❌ Dataset directory {DATASET_DIR} not found!")
+        print(f"❌ Dataset directory {directory_path} not found!")
         return
     
-    print(f"Analyzing dataset structure in {DATASET_DIR}...")
+    print(f"Analyzing dataset structure in {directory_path}...")
     
     # Count images
     images_dir = dataset_path / "images"

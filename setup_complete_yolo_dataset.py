@@ -6,13 +6,13 @@ This combines the 10 labeled images + 46 additional images.
 
 import os
 import shutil
-from pathlib import Path
 import zipfile
+from pathlib import Path
 
 # Paths
-DATASET_DIR = Path("backend/datasets/london_hotels_50_items_yolo")
-ORIGINAL_YOLO = Path("backend/datasets/london_hotels_yolo")
-ADDITIONAL_IMAGES = Path("backend/datasets/sample_images/london_hotels")
+DATASET_DIR = Path("backend/datasets")
+ORIGINAL_YOLO = Path("backend/datasets")
+ADDITIONAL_IMAGES = Path("backend/datasets")
 
 def setup_directory_structure():
     """Set up the proper YOLO directory structure."""
