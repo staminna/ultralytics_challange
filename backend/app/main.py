@@ -28,5 +28,9 @@ app.include_router(model_routes.router, prefix=settings.API_V1_STR)
 app.include_router(sample_routes.router, prefix=settings.API_V1_STR)
 
 @app.get("/")
+def root_health_check():
+    return {"status": "ok", "service": settings.PROJECT_NAME}
+
+@app.get(f"{settings.API_V1_STR}/health")
 def health_check():
     return {"status": "ok", "service": settings.PROJECT_NAME}
