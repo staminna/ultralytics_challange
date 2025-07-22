@@ -2,11 +2,69 @@
 
 This repository contains a SaaS product for dataset annotation, focusing specifically on importing and managing datasets in YOLO format for computer vision tasks.
 
+## 🚀 Quick Start Guide
+
+### Prerequisites
+- Python 3.12+
+- Google Cloud Platform account with Firestore and Cloud Storage enabled
+- Service account key (`service-account-key.json`) in the project root
+
+### Step 1: Environment Setup
+```bash
+# Create and activate conda environment
+conda create -n dataset-annotation python=3.9
+conda activate dataset-annotation
+
+# Install dependencies
+cd backend
+pip install -r requirements.txt
+```
+
+### Step 2: Start the Backend Server
+```bash
+# From the backend directory
+python server.py
+# or
+uvicorn app.main:app --reload
+
+# Server will be available at: http://localhost:8000
+# API docs at: http://localhost:8000/docs
+```
+
+### Step 3: Test YOLO Dataset Import
+
+#### Option A: Test with Existing Dataset (10 labeled images)
+```bash
+# From project root
+python test_import_step_by_step.py
+```
+
+#### Option B: Upload Additional Raw Images (46 images)
+```bash
+python upload_additional_images.py
+```
+
+#### Option C: Create Complete Dataset (56 total images)
+```bash
+# Combines labeled + unlabeled images
+python setup_complete_yolo_dataset.py
+# Then upload the generated ZIP via API or test script
+```
+
+### Step 4: Verify Import Success
+
+1. **Check Server Logs**: Look for successful image/label processing
+2. **API Response**: Should return dataset ID and metadata
+3. **Cloud Storage**: Images stored under `datasets/{dataset-id}/images/`
+4. **Firestore**: Dataset metadata, images, and labels collections populated
+
 ## Core Features Implemented
 
 1. **Import datasets in YOLO format**: Upload ZIP archives containing images and YOLO-format annotations
-2. **List datasets**: Browse and manage your dataset collection
-3. **List images with labels for a dataset**: View all images with their bounding box annotations for a specific dataset
+2. **List datasets**: Browse and manage your dataset collection with pagination
+3. **List images with labels for a dataset**: View all images with their bounding box annotations
+4. **Chunked uploads**: Support for large datasets up to 100GB
+5. **Background processing**: Async import for better performance
 
 ## Architecture & Technical Approach
 
@@ -16,6 +74,79 @@ This solution is built as a cloud-native application leveraging Google Cloud Pla
 - **Cloud Firestore**: NoSQL document database for storing dataset, image, and label metadata
 - **Cloud Storage**: Object storage for raw image files and dataset archives
 - **Cloud Run**: Serverless deployment platform for the API service
+
+## 📋 API Endpoints
+
+### Dataset Management
+- `POST /api/v1/datasets/` - Create a new dataset
+- `GET /api/v1/datasets/` - List all datasets (with pagination)
+- `GET /api/v1/datasets/{dataset_id}` - Get specific dataset details
+- `GET /api/v1/datasets/{dataset_id}/images` - List images with labels for a dataset
+
+### YOLO Import
+- `POST /api/v1/datasets/import/yolo` - Import YOLO dataset from ZIP file
+- `POST /api/v1/datasets/import/yolo/chunk` - Chunked upload for large datasets
+- `GET /api/v1/datasets/{dataset_id}/import/status` - Check import progress
+
+### Image Management
+- `POST /api/v1/datasets/{dataset_id}/images` - Upload single image to dataset
+- `POST /api/v1/datasets/{dataset_id}/images/{image_id}/labels` - Add label to image
+
+### Interactive API Documentation
+Visit `http://localhost:8000/docs` for full Swagger/OpenAPI documentation with interactive testing.
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+#### 1. Import Returns 200 but No Images Processed
+**Symptoms**: API returns success but dataset shows 0 images
+**Solutions**:
+- Restart the backend server: `python server.py`
+- Check server logs for specific errors
+- Verify YOLO dataset structure: `images/train/` and `labels/train/`
+
+#### 2. Label Processing Errors
+**Symptoms**: Images upload but labels fail with attribute errors
+**Solutions**:
+- Ensure YOLO label files have correct format: `class_id x_center y_center width height`
+- Verify coordinates are normalized (0-1 range)
+- Check that class IDs exist in dataset
+
+#### 3. File Upload Errors
+**Symptoms**: 422 Unprocessable Entity on file upload
+**Solutions**:
+- Use correct form field name: `image` (not `file`)
+- Ensure file is valid image format (JPG, PNG)
+- Check file size limits
+
+#### 4. GCP Authentication Issues
+**Symptoms**: 403 Forbidden or authentication errors
+**Solutions**:
+- Verify `service-account-key.json` exists in project root
+- Check GCP service account has Firestore and Storage permissions
+- Ensure GCP project ID is correctly configured
+
+### Dataset Storage Structure
+
+Datasets are stored using **dataset IDs** (not names) for backend consistency:
+
+```
+Cloud Storage:
+└── yolo_datasets_ultralytics/
+    └── datasets/
+        └── {dataset-id}/          # e.g., fadb65eb-4d88-45a1-ac18-2815ebe7a060
+            ├── images/
+            │   └── train/
+            └── extracted/          # Original ZIP contents
+                ├── images/
+                └── labels/
+
+Firestore Collections:
+├── datasets                       # Dataset metadata
+├── images                        # Image records
+└── labels                        # Label/annotation records
+```
 
 ## Project Structure
 
@@ -29,6 +160,7 @@ This solution is built as a cloud-native application leveraging Google Cloud Pla
     /schemas         # Pydantic schemas for validation
     /services        # Business logic
   /tests            # Unit and integration tests
+/scripts             # Helper scripts for testing and setup
 ```
 
 ## Design Decisions & Trade-offs

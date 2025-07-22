@@ -11,7 +11,7 @@ from PIL import Image as PILImage
 from .dataset_service import DatasetService
 from .chunked_upload_service import ChunkedUploadService
 from ..models.firestore_models import Dataset, Image, Label, ClassDefinition
-from ..schemas.dataset import DatasetCreate
+from ..schemas.dataset import DatasetCreate, LabelCreate
 from ..core.config import get_settings
 from ..core.gcp import get_firestore_client, get_storage_bucket
 
@@ -302,30 +302,44 @@ class YoloImportService:
     
     async def _process_yolo_files(self, dataset_id: str, images_dir: str, labels_dir: str) -> None:
         """Process YOLO format image and label files."""
-        # Get image files
-        image_files = [f for f in os.listdir(images_dir) 
-                      if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+        print(f"Processing YOLO files from images_dir: {images_dir}, labels_dir: {labels_dir}")
+        
+        # Find all image files recursively (handles train/val subdirectories)
+        image_files = []
+        for root, dirs, files in os.walk(images_dir):
+            for file in files:
+                if file.lower().endswith(('.png', '.jpg', '.jpeg')):
+                    full_path = os.path.join(root, file)
+                    # Calculate relative path from images_dir to maintain structure
+                    rel_path = os.path.relpath(full_path, images_dir)
+                    image_files.append((full_path, rel_path))
         
         print(f"Found {len(image_files)} image files in {images_dir}")
-        print(f"Image files: {image_files[:5]}")  # First 5 files
+        if image_files:
+            print(f"Sample image files: {[rel for _, rel in image_files[:5]]}")  # First 5 files
         
         processed_count = 0
-        for img_file in image_files:
+        for img_path, img_rel_path in image_files:
             try:
-                # Get corresponding label file (same name, .txt extension)
-                base_name = os.path.splitext(img_file)[0]
+                # Get corresponding label file using the same relative structure
+                base_name = os.path.splitext(os.path.basename(img_path))[0]
                 label_file = f"{base_name}.txt"
-                label_path = os.path.join(labels_dir, label_file)
                 
-                # Only process images that have label files
-                if not os.path.exists(label_path):
-                    print(f"Skipping {img_file} - no corresponding label file {label_file}")
-                    continue
-                    
-                print(f"Processing image {img_file} with labels {label_file}")
+                # Construct label path using the same relative directory structure
+                img_dir_rel = os.path.dirname(img_rel_path)  # e.g., "train" or "val"
+                if img_dir_rel:
+                    label_path = os.path.join(labels_dir, img_dir_rel, label_file)
+                else:
+                    label_path = os.path.join(labels_dir, label_file)
+                
+                # Check if label file exists
+                label_exists = os.path.exists(label_path)
+                if not label_exists:
+                    print(f"Processing image {img_path} without labels (for annotation)")
+                else:
+                    print(f"Processing image {img_path} with labels {label_path}")
                 
                 # Process image
-                img_path = os.path.join(images_dir, img_file)
                 with open(img_path, "rb") as f:
                     img_bytes = f.read()
                     
@@ -335,13 +349,12 @@ class YoloImportService:
                     
                 # Create an UploadFile object
                 upload_file = UploadFile(
-                    filename=img_file,
-                    file=io.BytesIO(img_bytes),
-                    content_type=f"image/{os.path.splitext(img_file)[1].replace('.', '')}"
+                    filename=os.path.basename(img_path),
+                    file=io.BytesIO(img_bytes)
                 )
                 
                 # Upload image to dataset
-                print(f"Uploading image {img_file} to dataset {dataset_id}")
+                print(f"Uploading image {os.path.basename(img_path)} to dataset {dataset_id}")
                 image = await self.dataset_service.upload_image_to_dataset(
                     dataset_id=dataset_id,
                     file=upload_file,
@@ -351,12 +364,15 @@ class YoloImportService:
                 print(f"Image uploaded successfully with ID: {image.id}")
                 
                 # Process labels
-                await self._process_yolo_labels(image.id, label_path)
+                if label_exists:
+                    await self._process_yolo_labels(image.id, label_path)
                 processed_count += 1
                 print(f"Processed {processed_count}/{len(image_files)} images")
                 
             except Exception as e:
-                print(f"Error processing image {img_file}: {str(e)}")
+                print(f"Error processing image {img_path}: {str(e)}")
+                import traceback
+                traceback.print_exc()
                 continue
         
         print(f"Completed processing {processed_count} images out of {len(image_files)} total")
@@ -364,8 +380,14 @@ class YoloImportService:
     async def _process_yolo_files_in_batches(self, dataset_id: str, images_dir: str, labels_dir: str, batch_size: int = 50) -> None:
         """Process YOLO format image and label files in batches to handle large datasets."""
         # Get image files
-        image_files = [f for f in os.listdir(images_dir) 
-                      if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+        image_files = []
+        for root, dirs, files in os.walk(images_dir):
+            for file in files:
+                if file.lower().endswith(('.png', '.jpg', '.jpeg')):
+                    full_path = os.path.join(root, file)
+                    # Calculate relative path from images_dir to maintain structure
+                    rel_path = os.path.relpath(full_path, images_dir)
+                    image_files.append((full_path, rel_path))
         
         # Process in batches
         total_images = len(image_files)
@@ -373,27 +395,57 @@ class YoloImportService:
             batch = image_files[i:i+batch_size]
             tasks = []
             
-            for img_file in batch:
-                # Get corresponding label file (same name, .txt extension)
-                base_name = os.path.splitext(img_file)[0]
+            for img_path, img_rel_path in batch:
+                # Get corresponding label file using the same relative structure
+                base_name = os.path.splitext(os.path.basename(img_path))[0]
                 label_file = f"{base_name}.txt"
-                label_path = os.path.join(labels_dir, label_file)
                 
-                # Only process images that have label files
-                if not os.path.exists(label_path):
-                    continue
+                # Construct label path using the same relative directory structure
+                img_dir_rel = os.path.dirname(img_rel_path)  # e.g., "train" or "val"
+                if img_dir_rel:
+                    label_path = os.path.join(labels_dir, img_dir_rel, label_file)
+                else:
+                    label_path = os.path.join(labels_dir, label_file)
+                
+                # Check if label file exists
+                label_exists = os.path.exists(label_path)
+                if not label_exists:
+                    print(f"Processing image {img_path} without labels (for annotation)")
+                else:
+                    print(f"Processing image {img_path} with labels {label_path}")
+                
+                # Process image
+                with open(img_path, "rb") as f:
+                    img_bytes = f.read()
                     
-                # Create task to process this image and its labels
-                task = self._process_single_image(dataset_id, images_dir, img_file, label_path)
-                tasks.append(task)
-            
-            # Process batch concurrently
-            await asyncio.gather(*tasks)
-            
-            # Update dataset with progress
-            progress = min(100, int((i + len(batch)) / total_images * 100))
-            dataset_ref = self.db.collection(self.DATASET_COLLECTION).document(dataset_id)
-            dataset_ref.update({"import_progress": progress})
+                # Get image dimensions
+                with PILImage.open(io.BytesIO(img_bytes)) as img:
+                    width, height = img.size
+                    
+                # Create an UploadFile object
+                upload_file = UploadFile(
+                    filename=os.path.basename(img_path),
+                    file=io.BytesIO(img_bytes)
+                )
+                
+                # Upload image to dataset
+                print(f"Uploading image {os.path.basename(img_path)} to dataset {dataset_id}")
+                image = await self.dataset_service.upload_image_to_dataset(
+                    dataset_id=dataset_id,
+                    file=upload_file,
+                    width=width,
+                    height=height
+                )
+                print(f"Image uploaded successfully with ID: {image.id}")
+                
+                # Process labels
+                if label_exists:
+                    await self._process_yolo_labels(image.id, label_path)
+                
+                # Update dataset with progress
+                progress = min(100, int((i + len(batch)) / total_images * 100))
+                dataset_ref = self.db.collection(self.DATASET_COLLECTION).document(dataset_id)
+                dataset_ref.update({"import_progress": progress})
     
     async def _process_single_image(self, dataset_id: str, images_dir: str, img_file: str, label_path: str) -> None:
         """Process a single image and its labels."""
@@ -408,9 +460,8 @@ class YoloImportService:
             
         # Create an UploadFile object
         upload_file = UploadFile(
-            filename=img_file,
-            file=io.BytesIO(img_bytes),
-            content_type=f"image/{os.path.splitext(img_file)[1].replace('.', '')}"
+            filename=os.path.basename(img_path),
+            file=io.BytesIO(img_bytes)
         )
         
         # Upload image to dataset
@@ -422,7 +473,8 @@ class YoloImportService:
         )
         
         # Process labels
-        await self._process_yolo_labels(image.id, label_path)
+        if os.path.exists(label_path):
+            await self._process_yolo_labels(image.id, label_path)
     
     async def _process_yolo_labels(self, image_id: str, label_path: str) -> None:
         """Process YOLO format label file for an image."""
@@ -448,13 +500,13 @@ class YoloImportService:
                     continue
                 
                 # Create label
-                label_data = {
-                    "class_id": class_id,
-                    "x_center": x_center,
-                    "y_center": y_center,
-                    "width": width,
-                    "height": height
-                }
+                label_data = LabelCreate(
+                    class_id=class_id,
+                    x_center=x_center,
+                    y_center=y_center,
+                    width=width,
+                    height=height
+                )
                 
                 await self.dataset_service.create_label(image_id, label_data)
                 

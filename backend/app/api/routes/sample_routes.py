@@ -30,7 +30,7 @@ def get_yolo_model_service():
     return YOLOModelService()
 
 # Sample image directory
-SAMPLE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "sample_images")
+SAMPLE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "hotel_sample_images")
 LONDON_HOTELS_DIR = os.path.join(SAMPLE_DIR, "london_hotels")
 
 # Create directories if they don't exist

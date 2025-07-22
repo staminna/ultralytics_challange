@@ -45,7 +45,7 @@ backend/service-account-key.json
 .conda/
 
 # Sample images and datasets (downloaded dynamically)
-backend/sample_images/
+backend/hotel_sample_images/
 backend/datasets/
 *.jpg
 *.jpeg

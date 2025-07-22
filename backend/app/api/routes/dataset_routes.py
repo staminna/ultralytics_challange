@@ -5,7 +5,7 @@ from ...services.dataset_service import DatasetService
 from ...services.yolo_import_service import YoloImportService
 from ...schemas.dataset import (
     Dataset, DatasetCreate, DatasetListResponse,
-    ImageListResponse, YoloImportRequest
+    ImageListResponse, YoloImportRequest, ImageUpdate, LabelUpdate, DeleteResponse, LabelCreate
 )
 from ...core.gcp import get_storage_bucket
 import tempfile
@@ -115,6 +115,129 @@ async def debug_dataset_images(
         }
     except Exception as e:
         return {"error": str(e), "type": type(e).__name__}
+
+
+@router.get("/images/{image_id}", response_model=Dict[str, Any])
+async def get_image(
+    image_id: str,
+    dataset_service: DatasetService = Depends(get_dataset_service)
+):
+    """Get a specific image by ID with its labels and download URL."""
+    image = await dataset_service.get_image(image_id)
+    if not image:
+        raise HTTPException(status_code=404, detail="Image not found")
+    return image
+
+
+@router.put("/images/{image_id}", response_model=Dict[str, Any])
+async def update_image(
+    image_id: str,
+    update_data: ImageUpdate,
+    dataset_service: DatasetService = Depends(get_dataset_service)
+):
+    """Update image metadata."""
+    image = await dataset_service.update_image(
+        image_id=image_id,
+        filename=update_data.filename,
+        width=update_data.width,
+        height=update_data.height
+    )
+    if not image:
+        raise HTTPException(status_code=404, detail="Image not found")
+    return image.to_dict()
+
+
+@router.delete("/images/{image_id}", response_model=DeleteResponse)
+async def delete_image(
+    image_id: str,
+    dataset_service: DatasetService = Depends(get_dataset_service)
+):
+    """Delete an image and all its labels."""
+    success = await dataset_service.delete_image(image_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Image not found")
+    return DeleteResponse(message="Image deleted successfully")
+
+
+@router.delete("/{dataset_id}", response_model=DeleteResponse)
+async def delete_dataset(
+    dataset_id: str,
+    dataset_service: DatasetService = Depends(get_dataset_service)
+):
+    """Delete a dataset and all its images and labels."""
+    success = await dataset_service.delete_dataset(dataset_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    return DeleteResponse(message="Dataset deleted successfully")
+
+
+@router.get("/labels/{label_id}", response_model=Dict[str, Any])
+async def get_label(
+    label_id: str,
+    dataset_service: DatasetService = Depends(get_dataset_service)
+):
+    """Get a specific label by ID."""
+    label = await dataset_service.get_label(label_id)
+    if not label:
+        raise HTTPException(status_code=404, detail="Label not found")
+    return label.to_dict()
+
+
+@router.put("/labels/{label_id}", response_model=Dict[str, Any])
+async def update_label(
+    label_id: str,
+    update_data: LabelUpdate,
+    dataset_service: DatasetService = Depends(get_dataset_service)
+):
+    """Update a label."""
+    label = await dataset_service.update_label(
+        label_id=label_id,
+        class_id=update_data.class_id,
+        x_center=update_data.x_center,
+        y_center=update_data.y_center,
+        width=update_data.width,
+        height=update_data.height
+    )
+    if not label:
+        raise HTTPException(status_code=404, detail="Label not found")
+    return label.to_dict()
+
+
+@router.delete("/labels/{label_id}", response_model=DeleteResponse)
+async def delete_label(
+    label_id: str,
+    dataset_service: DatasetService = Depends(get_dataset_service)
+):
+    """Delete a label."""
+    success = await dataset_service.delete_label(label_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Label not found")
+    return DeleteResponse(message="Label deleted successfully")
+
+
+@router.post("/{dataset_id}/images", response_model=Dict[str, Any])
+async def upload_image_to_dataset(
+    dataset_id: str,
+    image: UploadFile = File(...),
+    dataset_service: DatasetService = Depends(get_dataset_service)
+):
+    """Upload a single image to a dataset."""
+    uploaded_image = await dataset_service.upload_image_to_dataset(
+        dataset_id=dataset_id,
+        file=image
+    )
+    return uploaded_image.to_dict()
+
+
+@router.post("/images/{image_id}/labels", response_model=Dict[str, Any])
+async def create_label_for_image(
+    image_id: str,
+    label_data: LabelCreate,
+    dataset_service: DatasetService = Depends(get_dataset_service)
+):
+    """Create a label for an image."""
+    label = await dataset_service.create_label(image_id, label_data)
+    return label.to_dict()
 
 
 @router.post("/import/yolo", response_model=Dataset)

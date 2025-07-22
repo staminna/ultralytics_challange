@@ -35,6 +35,20 @@ class LabelCreate(LabelBase):
     pass
 
 
+class ImageUpdate(BaseModel):
+    filename: Optional[str] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+
+
+class LabelUpdate(BaseModel):
+    class_id: Optional[int] = None
+    x_center: Optional[float] = None
+    y_center: Optional[float] = None
+    width: Optional[float] = None
+    height: Optional[float] = None
+
+
 # Read schemas
 class Label(LabelBase):
     id: str
@@ -101,3 +115,8 @@ class ImageListResponse(BaseModel):
     images: List[Image]
     total: int
     dataset_id: str
+
+
+class DeleteResponse(BaseModel):
+    message: str
+    success: bool = True

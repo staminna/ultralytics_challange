@@ -184,3 +184,174 @@ class DatasetService:
         label_ref.set(label.to_dict())
         
         return label
+    
+    async def get_image(self, image_id: str) -> Optional[Image]:
+        """Get an image by ID."""
+        image_ref = self.db.collection(IMAGE_COLLECTION).document(image_id)
+        image_doc = image_ref.get()
+        
+        if not image_doc.exists:
+            return None
+            
+        image_data = image_doc.to_dict()
+        
+        # Generate signed URL for image download
+        blob = self.bucket.blob(image_data["storage_path"])
+        download_url = blob.generate_signed_url(
+            version="v4",
+            expiration=timedelta(minutes=30),
+            method="GET"
+        )
+        
+        # Get labels for this image
+        labels_query = self.db.collection(LABEL_COLLECTION).where("image_id", "==", image_id)
+        label_docs = labels_query.stream()
+        labels = [Label.from_dict(doc.to_dict()) for doc in label_docs]
+        
+        image = Image.from_dict(image_data)
+        image_dict = image.to_dict()
+        image_dict["download_url"] = download_url
+        image_dict["labels"] = [label.to_dict() for label in labels]
+        
+        return image_dict
+    
+    async def update_image(self, image_id: str, filename: str = None, width: int = None, height: int = None) -> Optional[Image]:
+        """Update image metadata."""
+        image_ref = self.db.collection(IMAGE_COLLECTION).document(image_id)
+        image_doc = image_ref.get()
+        
+        if not image_doc.exists:
+            return None
+        
+        update_data = {"updated_at": datetime.utcnow()}
+        
+        if filename is not None:
+            update_data["filename"] = filename
+        if width is not None:
+            update_data["width"] = width
+        if height is not None:
+            update_data["height"] = height
+            
+        image_ref.update(update_data)
+        
+        # Return updated image
+        updated_doc = image_ref.get()
+        return Image.from_dict(updated_doc.to_dict())
+    
+    async def delete_image(self, image_id: str) -> bool:
+        """Delete an image and all its labels."""
+        image_ref = self.db.collection(IMAGE_COLLECTION).document(image_id)
+        image_doc = image_ref.get()
+        
+        if not image_doc.exists:
+            return False
+        
+        image_data = image_doc.to_dict()
+        
+        # Delete from Cloud Storage
+        try:
+            blob = self.bucket.blob(image_data["storage_path"])
+            blob.delete()
+        except Exception as e:
+            print(f"Warning: Could not delete image from storage: {e}")
+        
+        # Delete all labels for this image
+        labels_query = self.db.collection(LABEL_COLLECTION).where("image_id", "==", image_id)
+        label_docs = labels_query.stream()
+        
+        for label_doc in label_docs:
+            label_doc.reference.delete()
+        
+        # Delete image document
+        image_ref.delete()
+        
+        return True
+    
+    async def delete_dataset(self, dataset_id: str) -> bool:
+        """Delete a dataset and all its images and labels."""
+        dataset_ref = self.db.collection(DATASET_COLLECTION).document(dataset_id)
+        dataset_doc = dataset_ref.get()
+        
+        if not dataset_doc.exists:
+            return False
+        
+        # Get all images in the dataset
+        images_query = self.db.collection(IMAGE_COLLECTION).where("dataset_id", "==", dataset_id)
+        image_docs = images_query.stream()
+        
+        # Delete each image (this will also delete their labels)
+        for image_doc in image_docs:
+            await self.delete_image(image_doc.id)
+        
+        # Delete class definitions for this dataset
+        classes_query = self.db.collection(CLASS_COLLECTION).where("dataset_id", "==", dataset_id)
+        class_docs = classes_query.stream()
+        
+        for class_doc in class_docs:
+            class_doc.reference.delete()
+        
+        # Delete dataset folder from Cloud Storage
+        dataset_data = dataset_doc.to_dict()
+        storage_path = dataset_data.get("storage_path", f"datasets/{dataset_id}")
+        
+        try:
+            # List and delete all blobs in the dataset folder
+            blobs = self.bucket.list_blobs(prefix=storage_path)
+            for blob in blobs:
+                blob.delete()
+        except Exception as e:
+            print(f"Warning: Could not delete dataset folder from storage: {e}")
+        
+        # Delete dataset document
+        dataset_ref.delete()
+        
+        return True
+    
+    async def get_label(self, label_id: str) -> Optional[Label]:
+        """Get a label by ID."""
+        label_ref = self.db.collection(LABEL_COLLECTION).document(label_id)
+        label_doc = label_ref.get()
+        
+        if not label_doc.exists:
+            return None
+            
+        return Label.from_dict(label_doc.to_dict())
+    
+    async def update_label(self, label_id: str, class_id: int = None, x_center: float = None, 
+                          y_center: float = None, width: float = None, height: float = None) -> Optional[Label]:
+        """Update a label."""
+        label_ref = self.db.collection(LABEL_COLLECTION).document(label_id)
+        label_doc = label_ref.get()
+        
+        if not label_doc.exists:
+            return None
+        
+        update_data = {"updated_at": datetime.utcnow()}
+        
+        if class_id is not None:
+            update_data["class_id"] = class_id
+        if x_center is not None:
+            update_data["x_center"] = x_center
+        if y_center is not None:
+            update_data["y_center"] = y_center
+        if width is not None:
+            update_data["width"] = width
+        if height is not None:
+            update_data["height"] = height
+            
+        label_ref.update(update_data)
+        
+        # Return updated label
+        updated_doc = label_ref.get()
+        return Label.from_dict(updated_doc.to_dict())
+    
+    async def delete_label(self, label_id: str) -> bool:
+        """Delete a label."""
+        label_ref = self.db.collection(LABEL_COLLECTION).document(label_id)
+        label_doc = label_ref.get()
+        
+        if not label_doc.exists:
+            return False
+        
+        label_ref.delete()
+        return True
