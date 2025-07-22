@@ -306,43 +306,61 @@ class YoloImportService:
         image_files = [f for f in os.listdir(images_dir) 
                       if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
         
+        print(f"Found {len(image_files)} image files in {images_dir}")
+        print(f"Image files: {image_files[:5]}")  # First 5 files
+        
+        processed_count = 0
         for img_file in image_files:
-            # Get corresponding label file (same name, .txt extension)
-            base_name = os.path.splitext(img_file)[0]
-            label_file = f"{base_name}.txt"
-            label_path = os.path.join(labels_dir, label_file)
-            
-            # Only process images that have label files
-            if not os.path.exists(label_path):
+            try:
+                # Get corresponding label file (same name, .txt extension)
+                base_name = os.path.splitext(img_file)[0]
+                label_file = f"{base_name}.txt"
+                label_path = os.path.join(labels_dir, label_file)
+                
+                # Only process images that have label files
+                if not os.path.exists(label_path):
+                    print(f"Skipping {img_file} - no corresponding label file {label_file}")
+                    continue
+                    
+                print(f"Processing image {img_file} with labels {label_file}")
+                
+                # Process image
+                img_path = os.path.join(images_dir, img_file)
+                with open(img_path, "rb") as f:
+                    img_bytes = f.read()
+                    
+                # Get image dimensions
+                with PILImage.open(io.BytesIO(img_bytes)) as img:
+                    width, height = img.size
+                    
+                # Create an UploadFile object
+                upload_file = UploadFile(
+                    filename=img_file,
+                    file=io.BytesIO(img_bytes),
+                    content_type=f"image/{os.path.splitext(img_file)[1].replace('.', '')}"
+                )
+                
+                # Upload image to dataset
+                print(f"Uploading image {img_file} to dataset {dataset_id}")
+                image = await self.dataset_service.upload_image_to_dataset(
+                    dataset_id=dataset_id,
+                    file=upload_file,
+                    width=width,
+                    height=height
+                )
+                print(f"Image uploaded successfully with ID: {image.id}")
+                
+                # Process labels
+                await self._process_yolo_labels(image.id, label_path)
+                processed_count += 1
+                print(f"Processed {processed_count}/{len(image_files)} images")
+                
+            except Exception as e:
+                print(f"Error processing image {img_file}: {str(e)}")
                 continue
-                
-            # Process image
-            img_path = os.path.join(images_dir, img_file)
-            with open(img_path, "rb") as f:
-                img_bytes = f.read()
-                
-            # Get image dimensions
-            with PILImage.open(io.BytesIO(img_bytes)) as img:
-                width, height = img.size
-                
-            # Create an UploadFile object
-            upload_file = UploadFile(
-                filename=img_file,
-                file=io.BytesIO(img_bytes),
-                content_type=f"image/{os.path.splitext(img_file)[1].replace('.', '')}"
-            )
-            
-            # Upload image to dataset
-            image = await self.dataset_service.upload_image_to_dataset(
-                dataset_id=dataset_id,
-                file=upload_file,
-                width=width,
-                height=height
-            )
-            
-            # Process labels
-            await self._process_yolo_labels(image.id, label_path)
-            
+        
+        print(f"Completed processing {processed_count} images out of {len(image_files)} total")
+    
     async def _process_yolo_files_in_batches(self, dataset_id: str, images_dir: str, labels_dir: str, batch_size: int = 50) -> None:
         """Process YOLO format image and label files in batches to handle large datasets."""
         # Get image files
