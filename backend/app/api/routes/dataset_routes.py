@@ -88,6 +88,35 @@ async def list_dataset_images(
     }
 
 
+@router.get("/{dataset_id}/images/debug")
+async def debug_dataset_images(
+    dataset_id: str,
+    dataset_service: DatasetService = Depends(get_dataset_service)
+):
+    """
+    Debug endpoint to check dataset images functionality.
+    """
+    try:
+        # Check if dataset exists
+        dataset = await dataset_service.get_dataset(dataset_id)
+        if not dataset:
+            return {"error": "Dataset not found", "dataset_id": dataset_id}
+        
+        # Try to get images count
+        from ...services.dataset_service import IMAGE_COLLECTION
+        images_query = dataset_service.db.collection(IMAGE_COLLECTION).where("dataset_id", "==", dataset_id)
+        image_docs = list(images_query.stream())
+        
+        return {
+            "dataset_id": dataset_id,
+            "dataset_name": dataset.name,
+            "images_found": len(image_docs),
+            "image_ids": [doc.id for doc in image_docs[:5]]  # First 5 IDs
+        }
+    except Exception as e:
+        return {"error": str(e), "type": type(e).__name__}
+
+
 @router.post("/import/yolo", response_model=Dataset)
 async def import_yolo_dataset(
     background_tasks: BackgroundTasks,

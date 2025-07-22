@@ -124,7 +124,8 @@ cd backend
 uvicorn app.main:app --reload
 ```
 
-Access the API documentation at: http://localhost:8000/docs```
+Access the API documentation at: http://localhost:8000/docs
+```
 
 Create a storage bucket for storing datasets.
 

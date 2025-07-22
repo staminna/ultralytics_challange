@@ -43,7 +43,7 @@ class Label(LabelBase):
     updated_at: datetime
 
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class Image(ImageBase):
@@ -58,7 +58,7 @@ class Image(ImageBase):
     labels: List[Label] = []
 
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class Dataset(DatasetBase):
@@ -66,22 +66,22 @@ class Dataset(DatasetBase):
     storage_path: str
     created_at: datetime
     updated_at: datetime
-    image_count: Optional[int] = 0
-    status: Optional[str] = "pending"  # pending, importing, finalizing, ready, error
-    import_progress: Optional[int] = 0
+    image_count: int = 0
+    status: str = "pending"  # pending, importing, finalizing, ready, error
+    import_progress: int = 0
     error_message: Optional[str] = None
     upload_id: Optional[str] = None
-    size_bytes: Optional[int] = 0
+    size_bytes: int = 0
 
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class DatasetWithImages(Dataset):
     images: List[Image] = []
 
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 # Request schemas for importing YOLO format datasets
