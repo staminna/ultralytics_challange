@@ -3,8 +3,9 @@
 Monitor datasets and show their status.
 """
 
-import requests
 import time
+
+import requests
 
 API_BASE_URL = "http://localhost:8000/api/v1"
 

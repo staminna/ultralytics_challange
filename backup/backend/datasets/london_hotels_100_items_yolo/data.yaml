@@ -1,0 +1,13 @@
+# London Hotels Complete Dataset
+path: /Users/jorgenunes/2026/ultra assesment/backend/datasets/london_hotels_50_items_yolo
+train: images/train
+val: images/train
+
+# Classes (12 object types from COCO)
+nc: 12
+names: ['backpack', 'bed', 'bench', 'boat', 'book', 'chair', 'couch', 'dining table', 'person', 'tv', 'umbrella', 'wine glass']
+
+# Dataset info
+description: "Complete London Hotels dataset with 56 images (10 with YOLO labels, 46 ready for annotation)"
+version: "1.0"
+author: "Dataset Annotation Backend"

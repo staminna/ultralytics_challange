@@ -3,12 +3,13 @@
 Upload London Hotels YOLO dataset to the cloud via API.
 """
 
-import requests
-import zipfile
 import os
-from pathlib import Path
-import tempfile
 import shutil
+import tempfile
+import zipfile
+from pathlib import Path
+
+import requests
 
 # API configuration
 API_BASE = "http://localhost:8000/api/v1"

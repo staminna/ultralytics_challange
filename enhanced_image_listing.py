@@ -14,24 +14,25 @@ FEATURES:
 - Label/Annotation display and statistics
 """
 
+import argparse
+import base64
+import io
+import json
+import logging
 import os
 import sys
-import requests
-import json
-import time
-from pathlib import Path
 import tempfile
-from PIL import Image, ImageDraw, ImageFont
-import io
-import base64
-import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
-import numpy as np
-import argparse
-import logging
-from tabulate import tabulate
-import pymongo
+import time
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pymongo
+import requests
+from matplotlib.patches import Rectangle
+from PIL import Image, ImageDraw, ImageFont
+from tabulate import tabulate
 from tqdm import tqdm
 
 # Configure logging

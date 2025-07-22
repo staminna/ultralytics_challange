@@ -98,6 +98,10 @@ This script:
 
 ## API Documentation
 
+Access the API docs:
+Swagger UI: http://localhost:8000/docs
+ReDoc: http://localhost:8000/redoc
+
 For detailed API documentation, refer to `API_DOCUMENTATION.md`.
 
 ## Project Structure

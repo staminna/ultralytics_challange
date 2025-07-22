@@ -5,15 +5,16 @@ This script analyzes hotel images and their bounding boxes to better classify fu
 based on visual characteristics and aspect ratios.
 """
 
-import os
-import json
 import argparse
-import requests
+import json
 import logging
-from pathlib import Path
-from PIL import Image
+import os
 from io import BytesIO
-from typing import Dict, List, Any, Optional, Tuple
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import requests
+from PIL import Image
 
 # Configure logging
 logging.basicConfig(

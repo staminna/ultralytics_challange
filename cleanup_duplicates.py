@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Clean up duplicate datasets, keeping only the best ones."""
 
-import requests
-from collections import defaultdict
 import json
+from collections import defaultdict
+
+import requests
 
 API_BASE_URL = "http://localhost:8000/api/v1"
 
