@@ -107,28 +107,14 @@ Visit `http://localhost:8000/docs` for full Swagger/OpenAPI documentation with i
 
 ### Common Issues
 
-#### 1. Import Returns 200 but No Images Processed
-**Symptoms**: API returns success but dataset shows 0 images
-**Solutions**:
-- Restart the backend server: `python server.py`
-- Check server logs for specific errors
-- Verify YOLO dataset structure: `images/train/` and `labels/train/`
-
-#### 2. Label Processing Errors
+#### 1. Label Processing Errors
 **Symptoms**: Images upload but labels fail with attribute errors
 **Solutions**:
 - Ensure YOLO label files have correct format: `class_id x_center y_center width height`
 - Verify coordinates are normalized (0-1 range)
 - Check that class IDs exist in dataset
 
-#### 3. File Upload Errors
-**Symptoms**: 422 Unprocessable Entity on file upload
-**Solutions**:
-- Use correct form field name: `image` (not `file`)
-- Ensure file is valid image format (JPG, PNG)
-- Check file size limits
-
-#### 4. GCP Authentication Issues
+#### 2. GCP Authentication Issues
 **Symptoms**: 403 Forbidden or authentication errors
 **Solutions**:
 - Verify `service-account-key.json` exists in project root
@@ -202,11 +188,7 @@ I chose Firestore (NoSQL) over a traditional SQL database for several reasons:
 
 ## Future Enhancements
 
-1. Add authentication and user management
-2. Implement frontend UI for dataset visualization and management
-3. Add support for other annotation formats beyond YOLO
-4. Implement annotation editing capabilities
-5. Add export functionality to different formats
+1. Implement annotation editing capabilities
 
 ## GCP Setup
 
@@ -261,8 +243,8 @@ After setting up your environment and GCP credentials:
 ```bash
 # Start the FastAPI server
 cd backend
-uvicorn app.main:app --reload
-```
+python server.py
+
 
 Access the API documentation at: http://localhost:8000/docs
 ```
