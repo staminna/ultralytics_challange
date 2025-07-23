@@ -1,6 +1,0 @@
-path: /Users/jorgenunes/2026/ultra assesment/backend/datasets/london_hotels_yolo
-train: images/train
-val: images/train
-
-nc: 12
-names: ['backpack', 'bed', 'bench', 'boat', 'book', 'chair', 'couch', 'dining table', 'person', 'tv', 'umbrella', 'wine glass']

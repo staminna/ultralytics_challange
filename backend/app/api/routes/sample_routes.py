@@ -9,15 +9,15 @@ This module provides endpoints for:
 
 import os
 import shutil
-import uuid
-from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Depends
-from pydantic import BaseModel
-import requests
-import shutil
-from pathlib import Path
 import time
+import uuid
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 import httpx
+import requests
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from pydantic import BaseModel
 
 from ...core.config import get_settings
 from ...services.yolo_model_service import YOLOModelService
@@ -249,11 +249,12 @@ async def predict_london_hotel_image(
     
     # Import required libraries here to avoid import errors if some are missing
     try:
-        from ultralytics import YOLO
+        import io
+
+        import numpy as np
         import torch
         from PIL import Image
-        import io
-        import numpy as np
+        from ultralytics import YOLO
     except ImportError as e:
         raise HTTPException(
             status_code=500,

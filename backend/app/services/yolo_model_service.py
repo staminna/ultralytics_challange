@@ -7,20 +7,21 @@ This service provides methods to use the YOLOv8-X model for:
 3. Model fine-tuning on custom datasets
 """
 
-import os
 import io
+import os
 import tempfile
-from typing import List, Dict, Any, Tuple, Optional, BinaryIO
 from pathlib import Path
+from typing import Any, BinaryIO, Dict, List, Optional, Tuple
+
 import numpy as np
-from PIL import Image as PILImage
-from fastapi import UploadFile, HTTPException, BackgroundTasks
 import torch
+from fastapi import BackgroundTasks, HTTPException, UploadFile
+from PIL import Image as PILImage
 from ultralytics import YOLO
 
-from ..models.firestore_models import Dataset, Image, Label, ClassDefinition
 from ..core.config import get_settings
 from ..core.gcp import get_firestore_client, get_storage_bucket
+from ..models.firestore_models import ClassDefinition, Dataset, Image, Label
 
 # Get settings
 settings = get_settings()
