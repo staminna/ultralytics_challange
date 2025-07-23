@@ -79,7 +79,11 @@ class Image(ImageBase):
 
 class Dataset(DatasetBase):
     id: str
-    storage_path: str
+    format: Optional[str] = None
+    file_hash: Optional[str] = None
+    gcs_path: Optional[str] = None
+    storage_path: Optional[str] = None
+    metadata: Optional[dict] = None
     created_at: datetime
     updated_at: datetime
     image_count: int = 0

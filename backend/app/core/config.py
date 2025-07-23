@@ -4,13 +4,12 @@ from typing import List
 from pydantic import AnyHttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 class Settings(BaseSettings):
     """Application settings loaded from environment variables and .env file."""
 
     # API settings
     LOGLEVEL: str = os.getenv("LOGLEVEL", "info")
-    PROJECT_NAME: str = "YOLO Dataset Annotation API"
+    PROJECT_NAME: str = "YOLO Dataset Annotation API by Jorge"
     API_V1_STR: str = "/api/v1"
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
 

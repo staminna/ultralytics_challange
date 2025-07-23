@@ -1,17 +1,20 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api.v1.routes import dataset_routes
+from .api.routes import dataset_routes
 from .core.config import settings
 from .core.database import connect_to_mongo, close_mongo_connection
 
 # Application settings
 settings = settings
 
-# Initialize FastAPI app
+# Initialize FastAPI app with configuration for large file uploads
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    # Configure for large file uploads (up to 100GB)
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 
 # Configure CORS
@@ -48,6 +51,10 @@ if settings.BACKEND_CORS_ORIGINS:
 def root_health_check():
     return {"status": "ok", "service": settings.PROJECT_NAME}
 
-@app.get(f"{settings.API_V1_STR}/health")
+@app.get("/health")
 def health_check():
+    return {"status": "ok", "service": settings.PROJECT_NAME, "timestamp": "2025-07-23T21:54:37+01:00"}
+
+@app.get(f"{settings.API_V1_STR}/health")
+def health_check_v1():
     return {"status": "ok", "service": settings.PROJECT_NAME}
