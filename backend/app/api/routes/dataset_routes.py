@@ -13,6 +13,7 @@ from ...schemas.dataset import (Dataset, DatasetCreate, DatasetListResponse,
                                 DeleteResponse, ImageListResponse, ImageUpdate,
                                 LabelCreate, LabelUpdate, YoloImportRequest)
 from ...schemas.dataset_schema import DatasetImportResponse
+from ...models.firestore_models import Image
 from ...services.dataset_service import DatasetService
 from ...services.yolo_import_service import YoloImportService
 
@@ -78,11 +79,15 @@ async def list_dataset_images(
     
     This endpoint fulfills the core use case: List images with labels for a specific dataset
     """
-    images, total = await dataset_service.get_images_for_dataset(
+    images = await dataset_service.get_images_for_dataset(
         dataset_id=dataset_id, 
         limit=limit,
-        offset=offset
+        skip=offset
     )
+    
+    # Get total count for pagination
+    dataset_id_str = str(dataset_id)
+    total = await Image.find(Image.dataset_id == dataset_id_str).count()
     
     return {
         "images": images,

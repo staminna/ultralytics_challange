@@ -71,7 +71,9 @@ class DatasetService:
                 detail="Dataset not found"
             )
 
-        return await Image.find(Image.dataset_id == dataset_id).skip(skip).limit(limit).to_list()
+        # Convert UUID to string for MongoDB query
+        dataset_id_str = str(dataset_id)
+        return await Image.find(Image.dataset_id == dataset_id_str).skip(skip).limit(limit).to_list()
 
     async def upload_image_to_dataset(
         self, dataset_id: UUID, file: ImageCreate
