@@ -1,13 +1,21 @@
-# Dataset Annotation Service - YOLO Format
+# YOLO Dataset Annotation Service
 
-This repository contains a SaaS product for dataset annotation, focusing specifically on importing and managing datasets in YOLO format for computer vision tasks.
+A FastAPI-based service for managing and annotating YOLO format datasets.
 
-## 🚀 Quick Start Guide
+## Features
 
-### Prerequisites
-- Python 3.12+
+- Import datasets in YOLO format (ZIP archives)
+- List available datasets with pagination
+- List images with labels for a specific dataset
+- Support for large datasets (up to 100GB)
+- Cloud Storage integration for file storage
+- Firestore for metadata storage
+
+## Prerequisites
+
+- Python 3.8+
 - Google Cloud Platform account with Firestore and Cloud Storage enabled
-- Service account key (`service-account-key.json`) in the project root
+- Service account credentials with appropriate permissions
 
 ### Step 1: Environment Setup
 ```bash

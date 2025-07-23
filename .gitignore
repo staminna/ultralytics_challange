@@ -1,81 +1,236 @@
+# ========================================
+# YOLO Dataset Annotation Service - .gitignore
+# ========================================
+
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-env/
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-*.egg-info/
-.installed.cfg
-*.egg
+*.pyc
+*.pyo
+*.pyd
 
-# Environment
+# Virtual Environments
+venv/
+env/
+ENV/
 .env
 .venv
-env/
-venv/
-ENV/
 env.bak/
 venv.bak/
+.conda/
 
-# IDEs and editors
+# Environment Variables
+.env
+.env.*
+!.env.example
+
+# Build and Distribution
+dist/
+build/
+*.egg-info/
+.eggs/
+*.egg
+
+# Testing and Coverage
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*,cover
+.hypothesis/
+.pytest_cache/
+.nox/
+
+# IDEs and Editors
 .idea/
 .vscode/
 *.swp
 *.swo
+*~
+.spyderproject
+.spyproject
+.ropeproject
 
-# GCP credentials
-backend/service-account-key.json
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
 
-# Project specific
+# Database Files
 *.db
+*.sqlite3
+local_settings.py
 
-# Conda
-.conda/
+# Logs and Temporary Files
+*.log
+*.tmp
+*.temp
+backend/server.log
+backend/prediction_result.jpg
 
-# Sample images and datasets (downloaded dynamically)
-backend/hotel_sample_images/
-backend/datasets/
+# ========================================
+# DATASET AND MEDIA FILES
+# ========================================
+
+# Image Files
 *.jpg
 *.jpeg
 *.png
 *.gif
 *.bmp
 *.tiff
+*.webp
+*.svg
 
-# Model files (large, can be re-downloaded)
+# Video Files
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.mpg
+*.mpeg
+*.wmv
+*.flv
+*.webm
+
+# Archive Files
+*.zip
+*.tar.gz
+*.tar
+*.rar
+*.7z
+*.gz
+*.bz2
+
+# Dataset Files
+*.csv
+*.jsonl
+*.parquet
+*.feather
+
+# ========================================
+# YOLO AND ML SPECIFIC
+# ========================================
+
+# Model Files (large, can be re-downloaded)
 *.pt
 *.pth
+*.weights
 *.onnx
+*.engine
 *.pkl
 *.h5
+*.pb
+*.tflite
+*.mlmodel
 
-# Logs and temporary files
-*.log
-backend/server.log
-backend/prediction_result.jpg
+# Dataset Directories (downloaded dynamically)
+backend/datasets/
+backend/hotel_sample_images/
+yolo_dataset/
+africa_animals/
+animals-in-jungle/
+large_yolo_dataset_1000/
+data/
 
-# Test and demo scripts (temporary)
-backend/test_*.py
-backend/*-demo.sh
-backend/create_*.py
+# YOLO Training Outputs
+runs/
+wandb/
+tensorboard_logs/
+
+# Pipeline Outputs
+backend/pipeline_output/
+output/
+results/
+
+# ========================================
+# SYSTEM AND OS SPECIFIC
+# ========================================
 
 # macOS
 .DS_Store
 .DS_Store?
 ._*
+.AppleDouble
+.LSOverride
 .Spotlight-V100
 .Trashes
+
+# Windows
 ehthumbs.db
 Thumbs.db
+Desktop.ini
+
+# Linux
+.directory
+
+# ========================================
+# PROJECT SPECIFIC
+# ========================================
+
+# Google Cloud Credentials
+backend/service-account-key.json
+*.json
+!requirements.json
+!package.json
+!environment.yml
+!*.config.json
+
+# Legacy and Utility Files
+utils/legacy/
+scripts/legacy/
+*.bak
+*.backup
+*.old
+
+# Environment Backups
+environment_backup_*.yml
+
+# Test Files (temporary)
+backend/test_*.py
+backend/*-demo.sh
+backend/create_*.py
+!backend/create_memory.py
+
+# Monitoring and Debugging
+*.profile
+*.prof
+*.trace
+
+# Documentation Build
+docs/_build/
+docs/.doctrees/
+
+# ========================================
+# DEVELOPMENT TOOLS
+# ========================================
+
+# Linting and Formatting
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.flake8
+.black
+.isort.cfg
+
+# Package Managers
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ========================================
+# KEEP THESE FILES
+# ========================================
+# !README.md
+# !requirements.txt
+# !environment.yml
+# !.env.example
+# !INSTALLATION.md
+# !DATASET_SETUP.md
+*.temp

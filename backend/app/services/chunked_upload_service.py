@@ -1,14 +1,16 @@
 """
 Chunked upload service for handling large dataset uploads (up to 100GB).
 """
-import os
 import io
+import json
+import os
 import tempfile
 import uuid
-import json
-from typing import Dict, List, Optional, BinaryIO
-from fastapi import UploadFile, HTTPException
+from typing import BinaryIO, Dict, List, Optional
+
+from fastapi import HTTPException, UploadFile
 from google.cloud import storage
+
 from ..core.config import get_settings
 from ..core.gcp import get_storage_bucket, get_storage_client
 

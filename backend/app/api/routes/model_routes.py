@@ -7,12 +7,14 @@ This module includes endpoints for:
 3. Fine-tuning models on custom datasets
 """
 
-from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, Depends, File, UploadFile, Form, BackgroundTasks, HTTPException
+from typing import Any, Dict, List, Optional
+
+from fastapi import (APIRouter, BackgroundTasks, Depends, File, Form,
+                     HTTPException, UploadFile)
 from pydantic import BaseModel
 
-from ...services.yolo_model_service import YOLOModelService
 from ...schemas.dataset import Dataset, Image, Label
+from ...services.yolo_model_service import YOLOModelService
 
 # Create router
 router = APIRouter(prefix="/models", tags=["models"])
@@ -26,12 +28,16 @@ class AutoAnnotateRequest(BaseModel):
     class_filter: Optional[List[int]] = None
     
 class FineTuneRequest(BaseModel):
+    model_config = {"protected_namespaces": ()}
+    
     dataset_id: str
     model_name: str
     epochs: int = 10
     batch_size: int = 16
     
 class ModelJobResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
+    
     status: str
     model_id: Optional[str] = None
     dataset_id: Optional[str] = None
