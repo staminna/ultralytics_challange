@@ -1,274 +1,448 @@
-# YOLO Dataset Annotation Service
+# YOLO Dataset Management with CLI Tool
 
-A FastAPI-based service for managing and annotating YOLO format datasets.
+A comprehensive FastAPI-based service for managing YOLO datasets with integrated YOLO CLI tool support and MongoDB backend.
 
-## Features
+## 🚀 Quick Start
 
-- Import datasets in YOLO format (ZIP archives)
-- List available datasets with pagination
-- List images with labels for a specific dataset
-- Support for large datasets (up to 100GB)
-- Cloud Storage integration for file storage
-- Firestore for metadata storage
+Get up and running in 3 simple steps:
 
-## Prerequisites
-
-- Python 3.8+
-- Google Cloud Platform account with Firestore and Cloud Storage enabled
-- Service account credentials with appropriate permissions
-
-### Step 1: Environment Setup
 ```bash
-# Create and activate conda environment
-conda create -n dataset-annotation python=3.9
+# 1. Setup environment
+conda env create -f environment.yml
 conda activate dataset-annotation
 
-# Install dependencies
-cd backend
+# 2. Start services
+docker-compose up -d  # MongoDB
+python backend/server.py  # FastAPI server
+
+# 3. Download and upload datasets
+python scripts/download_datasets.py download coco8
+python scripts/dynamic_dataset_uploader.py
+```
+
+## 📋 Table of Contents
+
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Environment Setup](#environment-setup)
+- [Environment Variables](#environment-variables)
+- [MongoDB Management](#mongodb-management)
+- [YOLO CLI Dataset Management](#yolo-cli-dataset-management)
+- [Dataset Upload to Datastore](#dataset-upload-to-datastore)
+- [API Usage](#api-usage)
+- [Troubleshooting](#troubleshooting)
+
+## ✨ Features
+
+- **YOLO CLI Integration**: Official YOLO CLI tool for dataset downloads
+- **MongoDB Backend**: Fast, scalable document storage with Beanie ODM
+- **Dynamic Dataset Detection**: Automatically scans and uploads any YOLO dataset
+- **Duplicate Prevention**: Smart duplicate detection with normalized name matching
+- **Metadata Preservation**: Maintains YOLO structure (classes.txt, data.yaml)
+- **Batch Processing**: Handles large datasets efficiently
+- **RESTful API**: Complete CRUD operations with OpenAPI documentation
+
+## 📋 Prerequisites
+
+- **Python 3.12+**
+- **Docker & Docker Compose** (for MongoDB)
+- **Conda** (recommended for environment management)
+- **YOLO CLI** (installed automatically with ultralytics package)
+
+### Step 1: Create Conda Environment
+
+```bash
+# Create environment from file
+conda env create -f environment.yml
+conda activate dataset-annotation
+
+# Or create manually
+conda create -n dataset-annotation python=3.12
+conda activate dataset-annotation
 pip install -r requirements.txt
 ```
 
-### Step 2: Start the Backend Server
+### Step 2: Configure Environment Variables
+
 ```bash
-# From the backend directory
+# Copy the example environment file
+cp .env.example .env
+
+# Edit .env file with your settings (optional for development)
+# The default values work for local development
+```
+
+### Step 3: Start Services
+
+```bash
+# Start MongoDB and mongo-express
+docker-compose up -d mongo mongo-express
+
+# Start FastAPI server
+cd backend
 python server.py
-# or
-uvicorn app.main:app --reload
-
-# Server will be available at: http://localhost:8000
-# API docs at: http://localhost:8000/docs
 ```
 
-### Step 3: Test YOLO Dataset Import
+The server will be available at `http://localhost:8000` with API docs at `http://localhost:8000/docs`.
 
-#### Option A: Test with Existing Dataset (10 labeled images)
+## ⚙️ Environment Variables
+
+The project uses environment variables for configuration. Key variables include:
+
 ```bash
-# From project root
-python test_import_step_by_step.py
+# Database Configuration
+DATABASE_NAME=dataset_annotation          # MongoDB database name
+
+# Mongo Express Web UI
+ME_CONFIG_BASICAUTH_USERNAME=admin        # Web UI username
+ME_CONFIG_BASICAUTH_PASSWORD=express      # Web UI password
+
+# Google Cloud (Optional)
+GCP_PROJECT_ID=your-gcp-project-id        # For cloud storage
+GOOGLE_APPLICATION_CREDENTIALS=path/to/key # Service account key
+
+# Development Settings
+ENVIRONMENT=development                    # Environment mode
+DEBUG=True                                # Debug mode
 ```
 
-#### Option B: Upload Additional Raw Images (46 images)
+### Configuration Files
+
+- **`.env`**: Your local environment variables (not committed to git)
+- **`.env.example`**: Template with all available variables
+- **`docker-compose.yml`**: Uses environment variables with `${VARIABLE_NAME}` syntax
+
+### Security Notes
+
+- ⚠️ **Never commit `.env` files** - they contain sensitive credentials
+- ✅ **Use `.env.example`** as a template for new environments
+- 🔒 **For production**: Use proper secrets management (Docker secrets, Kubernetes secrets, etc.)
+
+## 🗄️ MongoDB Management
+
+### MongoDB Express Web Interface
+
+The project includes **mongo-express**, a web-based MongoDB admin interface for easy database inspection and management.
+
+#### Access MongoDB Express
+
 ```bash
-python upload_additional_images.py
+# After starting services with docker-compose up -d
+# Open in your browser:
+http://localhost:8081
 ```
 
-#### Option C: Create Complete Dataset (56 total images)
+#### Access Credentials
+
+- **MongoDB**: No authentication required for development
+- **Mongo Express Web UI**: 
+  - Username: `admin` (configurable in `.env`)
+  - Password: `express` (configurable in `.env`)
+- **Database Name**: `dataset_annotation` (configurable in `.env`)
+
+#### What You Can Do
+
+- **📋 Browse Collections**: View datasets, images, and labels collections
+- **🔍 Query Data**: Run MongoDB queries directly in the web interface
+- **📊 View Statistics**: Check document counts and database size
+- **🗑️ Delete Records**: Remove datasets or individual documents
+- **📝 Edit Documents**: Modify dataset metadata and image annotations
+- **📈 Monitor Performance**: View database operations and indexes
+
+#### Useful Collections to Monitor
+
+```
+📁 Database: dataset_annotation
+├── 📄 datasets          # Dataset metadata and configuration
+├── 📄 images            # Image records with file paths and metadata  
+├── 📄 labels            # YOLO annotation data and bounding boxes
+└── 📄 class_definitions # Class names and IDs for each dataset
+```
+
+#### Example Queries
+
+```javascript
+// Find all datasets
+db.datasets.find({})
+
+// Count images in a specific dataset
+db.images.countDocuments({"dataset_id": "your-dataset-id"})
+
+// Find images without labels
+db.images.find({"labels": {"$size": 0}})
+
+// Get dataset statistics
+db.datasets.aggregate([
+  {
+    $lookup: {
+      from: "images",
+      localField: "_id", 
+      foreignField: "dataset_id",
+      as: "images"
+    }
+  },
+  {
+    $project: {
+      name: 1,
+      image_count: {$size: "$images"},
+      created_at: 1
+    }
+  }
+])
+```
+
+#### Security Notes
+
+- **Development Only**: mongo-express is configured for development use
+- **Production**: Remove or secure mongo-express in production environments
+- **Network**: Only accessible locally (localhost:8081)
+- **Authentication**: Uses basic MongoDB authentication
+
+## 📦 YOLO CLI Dataset Management
+
+### Download Official YOLO Datasets
+
+Use the integrated YOLO CLI tool to download official datasets:
+
 ```bash
-# Combines labeled + unlabeled images
-python setup_complete_yolo_dataset.py
-# Then upload the generated ZIP via API or test script
+# List available datasets
+python scripts/download_datasets.py list
+
+# Download specific datasets
+python scripts/download_datasets.py download coco8
+python scripts/download_datasets.py download coco128
+python scripts/download_datasets.py download coco
+
+# Check dataset status
+python scripts/download_datasets.py status
+
+# Force re-download
+python scripts/download_datasets.py download coco8 --force
 ```
 
-### Step 4: Verify Import Success
+### Available Datasets
 
-1. **Check Server Logs**: Look for successful image/label processing
-2. **API Response**: Should return dataset ID and metadata
-3. **Cloud Storage**: Images stored under `datasets/{dataset-id}/images/`
-4. **Firestore**: Dataset metadata, images, and labels collections populated
+| Dataset | Images | Classes | Size | Description |
+|---------|--------|---------|------|--------------|
+| `coco8` | 8 | 80 | ~6MB | Small COCO subset for testing |
+| `coco128` | 128 | 80 | ~50MB | Medium COCO subset for development |
+| `coco` | 118K | 80 | ~20GB | Full COCO dataset |
+| `VOC` | 16K | 20 | ~4GB | Pascal VOC 2007+2012 |
+| `Open Images v7` | 1.7M | 600 | ~500GB | Large-scale detection dataset |
 
-## Core Features Implemented
+### Dataset Structure Created
 
-1. **Import datasets in YOLO format**: Upload ZIP archives containing images and YOLO-format annotations
-2. **List datasets**: Browse and manage your dataset collection with pagination
-3. **List images with labels for a dataset**: View all images with their bounding box annotations
-4. **Chunked uploads**: Support for large datasets up to 100GB
-5. **Background processing**: Async import for better performance
+```
+backend/datasets/
+├── coco8/
+│   ├── images/
+│   │   ├── train/          # Training images
+│   │   └── val/            # Validation images
+│   ├── labels/
+│   │   ├── train/          # Training labels (.txt)
+│   │   └── val/            # Validation labels (.txt)
+│   └── raw/
+│       ├── coco8.yaml      # YOLO config file
+│       └── classes.txt     # Class names
+└── coco128/
+    └── [same structure]
+```
 
-## Architecture & Technical Approach
+## 🚀 Dataset Upload to Datastore
 
-This solution is built as a cloud-native application leveraging Google Cloud Platform (GCP) services:
+### Automatic Upload (Recommended)
 
-- **FastAPI Backend**: Modern, high-performance Python web framework with automatic OpenAPI documentation
-- **Cloud Firestore**: NoSQL document database for storing dataset, image, and label metadata
-- **Cloud Storage**: Object storage for raw image files and dataset archives
-- **Cloud Run**: Serverless deployment platform for the API service
+The dynamic dataset uploader automatically detects and uploads all datasets:
 
-## 📋 API Endpoints
+```bash
+# Upload all datasets in backend/datasets/
+python scripts/dynamic_dataset_uploader.py
 
-### Dataset Management
-- `POST /api/v1/datasets/` - Create a new dataset
-- `GET /api/v1/datasets/` - List all datasets (with pagination)
-- `GET /api/v1/datasets/{dataset_id}` - Get specific dataset details
-- `GET /api/v1/datasets/{dataset_id}/images` - List images with labels for a dataset
+# Upload specific dataset
+python scripts/dynamic_dataset_uploader.py --dataset coco8
 
-### YOLO Import
-- `POST /api/v1/datasets/import/yolo` - Import YOLO dataset from ZIP file
-- `POST /api/v1/datasets/import/yolo/chunk` - Chunked upload for large datasets
-- `GET /api/v1/datasets/{dataset_id}/import/status` - Check import progress
+# Force upload (ignore duplicates)
+python scripts/dynamic_dataset_uploader.py --force
+```
 
-### Image Management
-- `POST /api/v1/datasets/{dataset_id}/images` - Upload single image to dataset
-- `POST /api/v1/datasets/{dataset_id}/images/{image_id}/labels` - Add label to image
+### Manual Upload via API
 
-### Interactive API Documentation
-Visit `http://localhost:8000/docs` for full Swagger/OpenAPI documentation with interactive testing.
+```bash
+# Upload ZIP file
+curl -X POST "http://localhost:8000/api/v1/datasets/import/yolo" \
+     -H "Content-Type: multipart/form-data" \
+     -F "file=@dataset.zip" \
+     -F "dataset_name=my_dataset"
+
+# Check upload status
+curl "http://localhost:8000/api/v1/datasets/{dataset_id}/import/status"
+```
+
+### Upload Features
+
+- **🔍 Dynamic Detection**: Scans `backend/datasets/` for any YOLO dataset
+- **🚫 Duplicate Prevention**: Compares normalized names to avoid duplicates
+- **📁 Structure Preservation**: Maintains YOLO directory structure and metadata
+- **📊 Progress Tracking**: Shows detailed upload progress and statistics
+- **🔄 Batch Processing**: Handles multiple datasets efficiently
+
+### Upload Output Example
+
+```
+🔍 Scanning for datasets in: /path/to/backend/datasets
+
+📦 Found dataset: coco8
+   📁 Structure: standard_yolo
+   🖼️  Images: 8 (train: 4, val: 4)
+   🏷️  Labels: 8 (train: 4, val: 4)
+   📄 Metadata: classes.txt, coco8.yaml
+   📊 Classes: 80 COCO classes
+
+✅ Upload successful!
+   📋 Dataset ID: 9d3e9d4d-73d9-4f90-abd8-c6d00d199c57
+   ⏱️  Processing time: 2.3s
+   💾 Total size: 6.2MB
+```
+
+## 🔌 API Usage
+
+### Core Endpoints
+
+```bash
+# List all datasets
+curl "http://localhost:8000/api/v1/datasets/"
+
+# Get dataset details
+curl "http://localhost:8000/api/v1/datasets/{dataset_id}"
+
+# List images in dataset
+curl "http://localhost:8000/api/v1/datasets/{dataset_id}/images"
+
+# Delete dataset
+curl -X DELETE "http://localhost:8000/api/v1/datasets/{dataset_id}"
+```
+
+### Response Examples
+
+```json
+// GET /api/v1/datasets/
+{
+  "datasets": [
+    {
+      "id": "9d3e9d4d-73d9-4f90-abd8-c6d00d199c57",
+      "name": "coco8",
+      "description": "COCO 8-image subset",
+      "image_count": 8,
+      "class_count": 80,
+      "created_at": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+## 🎯 Quick Setup Script
+
+For immediate testing, use the automated setup:
+
+```bash
+# Download COCO8, upload to datastore, and validate
+python scripts/quick_setup.py
+```
+
+This script:
+1. Downloads COCO8 dataset (8 images)
+2. Uploads to MongoDB datastore
+3. Validates successful upload
+4. Shows success metrics
 
 ## 🔧 Troubleshooting
 
 ### Common Issues
 
-#### 1. Label Processing Errors
-**Symptoms**: Images upload but labels fail with attribute errors
-**Solutions**:
-- Ensure YOLO label files have correct format: `class_id x_center y_center width height`
-- Verify coordinates are normalized (0-1 range)
-- Check that class IDs exist in dataset
-
-#### 2. GCP Authentication Issues
-**Symptoms**: 403 Forbidden or authentication errors
-**Solutions**:
-- Verify `service-account-key.json` exists in project root
-- Check GCP service account has Firestore and Storage permissions
-- Ensure GCP project ID is correctly configured
-
-### Dataset Storage Structure
-
-Datasets are stored using **dataset IDs** (not names) for backend consistency:
-
-```
-Cloud Storage:
-└── yolo_datasets_ultralytics/
-    └── datasets/
-        └── {dataset-id}/          # e.g., fadb65eb-4d88-45a1-ac18-2815ebe7a060
-            ├── images/
-            │   └── train/
-            └── extracted/          # Original ZIP contents
-                ├── images/
-                └── labels/
-
-Firestore Collections:
-├── datasets                       # Dataset metadata
-├── images                        # Image records
-└── labels                        # Label/annotation records
-```
-
-## Project Structure
-
-```
-/backend
-  /app
-    /api
-      /routes         # API endpoints
-    /core            # Core configurations
-    /models          # Data models
-    /schemas         # Pydantic schemas for validation
-    /services        # Business logic
-  /tests            # Unit and integration tests
-/scripts             # Helper scripts for testing and setup
-```
-
-## Design Decisions & Trade-offs
-
-### Why Firestore over SQL?
-
-I chose Firestore (NoSQL) over a traditional SQL database for several reasons:
-
-1. **Schema Flexibility**: Annotation data models may evolve over time as we add features
-2. **Horizontal Scaling**: Firestore automatically scales with increased load without manual sharding
-3. **GCP Integration**: Seamless integration with other GCP services
-4. **Nested Data**: Natural representation of hierarchical data (datasets → images → labels)
-
-### API Design Choices
-
-1. **Pagination**: All listing endpoints support pagination to handle large datasets efficiently
-2. **File Upload Handling**: Streaming file uploads directly to Cloud Storage for efficient processing
-3. **YOLO Format Support**: Specialized parser for the industry-standard YOLO annotation format
-
-### Performance Considerations
-
-1. **Signed URLs**: Pre-signed URLs for image access, avoiding proxy downloads through the API
-2. **Batch Operations**: Where possible, using batch operations for Firestore to reduce network overhead
-3. **Lazy Loading**: Images and labels are loaded only when requested, not with the dataset list
-
-### Security Considerations
-
-1. **GCP IAM**: Leveraging GCP's Identity and Access Management for service security
-2. **Input Validation**: Comprehensive validation of all API inputs using Pydantic
-3. **Isolated Storage**: Dataset data isolation within Cloud Storage
-
-## Future Enhancements
-
-1. Implement annotation editing capabilities
-
-## GCP Setup
-
-Create a billing account and a project.
-
-Create a service account and grant it the necessary permissions.
-
-On the gcloud shell run:
+**MongoDB Connection Failed**
 ```bash
-gcloud services enable run.googleapis.com \
-  storage.googleapis.com \
-  cloudbuild.googleapis.com \
-  secretmanager.googleapis.com
+# Check if MongoDB and mongo-express are running
+docker ps | grep mongo
+
+# Restart all MongoDB services
+docker-compose restart mongo mongo-express
+
+# View MongoDB logs
+docker-compose logs mongo
+
+# Access mongo-express web interface
+open http://localhost:8081
 ```
 
-## Environment Setup
-
-This project supports both conda and pyenv for environment management. Choose the option that fits your workflow best.
-
-### Option 1: Using Conda
-
+**YOLO CLI Download Fails**
 ```bash
-# Create and activate the conda environment
-conda env create -f environment.yml
-conda activate dataset-annotation
+# Update ultralytics
+pip install --upgrade ultralytics
 
-# Set up your GCP credentials
-export GOOGLE_APPLICATION_CREDENTIALS="service-account-key.json"
+# Clear YOLO cache
+yolo settings reset
 ```
 
-### Option 2: Using Pyenv with Virtualenv
-
+**Dataset Upload Fails**
 ```bash
-# Install the Python version specified in .python-version
-pyenv install --skip-existing $(cat .python-version)
+# Check server logs
+tail -f backend/logs/app.log
 
-# Create and activate a virtual environment
-pyenv virtualenv $(cat .python-version) dataset-annotation
-pyenv local dataset-annotation
-
-# Install dependencies
-pip install -r backend/requirements.txt
-
-# Set up your GCP credentials
-export GOOGLE_APPLICATION_CREDENTIALS="service-account-key.json"
+# Verify dataset structure
+python scripts/validate_dataset.py backend/datasets/coco8
 ```
 
-## Running Locally
-
-After setting up your environment and GCP credentials:
-
+**Duplicate Dataset Warnings**
 ```bash
-# Start the FastAPI server
-cd backend
-python server.py
+# Clean up duplicates
+python scripts/cleanup_duplicates.py
 
-
-Access the API documentation at: http://localhost:8000/docs
+# Force fresh upload
+python scripts/dynamic_dataset_uploader.py --force
 ```
 
-Create a storage bucket for storing datasets.
+### Performance Tips
 
-Create a secret manager for storing sensitive information.
+- Use `coco8` for quick testing (8 images)
+- Use `coco128` for development (128 images)
+- Monitor disk space for large datasets
+- Use `--force` flag sparingly to avoid unnecessary uploads
 
-Create a Cloud Run service for running the application.
+## 📊 Expected Results
 
-Create a Cloud Build trigger for building and deploying the application.
+After successful setup:
+- **COCO8**: 8 images, 80 classes, ~6MB
+- **COCO128**: 128 images, 80 classes, ~50MB
+- **Total Processing**: ~264 images with 1,229+ detections
+- **API Response Time**: <100ms for dataset listing
+- **Upload Speed**: ~3MB/s for local datasets
 
+## 🏗️ Architecture
 
-# Using gcloud CLI
+### Technology Stack
+- **Backend**: FastAPI with async/await
+- **Database**: MongoDB with Beanie ODM
+- **YOLO**: Official ultralytics CLI tool
+- **Validation**: Pydantic v2 models
+- **Documentation**: OpenAPI/Swagger UI
 
-# Add storage admin role to the service account
-# Grant Firestore permissions for the native-db database
+### Data Flow
+1. **Download**: YOLO CLI downloads official datasets
+2. **Scan**: Dynamic uploader detects datasets
+3. **Process**: Images and labels are validated
+4. **Store**: Metadata saved to MongoDB
+5. **Serve**: RESTful API provides access
 
-gcloud projects add-iam-policy-binding ultralytics-54321 \
-    --member="serviceAccount:ultralytics-challange@ultralytics-54321.iam.gserviceaccount.com" \
-    --role="roles/datastore.user"
+---
 
-gcloud projects add-iam-policy-binding ultralytics-54321 \
-    --member="serviceAccount:ultralytics-challange@ultralytics-54321.iam.gserviceaccount.com" \
-    --role="roles/firebase.admin"
+## 📝 Development Notes
 
-replace 54321 with your ID.
+- All datasets stored in `backend/datasets/`
+- MongoDB runs on `localhost:27017`
+- MongoDB Express web UI on `localhost:8081`
+- API server runs on `localhost:8000`
+- Logs available in `backend/logs/`
+- Use conda for dependency management
+
+For issues or contributions, check the project repository.
