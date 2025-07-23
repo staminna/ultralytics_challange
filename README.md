@@ -193,10 +193,12 @@ db.datasets.aggregate([
 
 #### Security Notes
 
+- **Localhost Only**: All services bind to 127.0.0.1 (localhost) for security
 - **Development Only**: mongo-express is configured for development use
 - **Production**: Remove or secure mongo-express in production environments
-- **Network**: Only accessible locally (localhost:8081)
-- **Authentication**: Uses basic MongoDB authentication
+- **Network Isolation**: Services only accessible from the host machine
+- **Authentication**: Basic auth enabled for mongo-express web interface
+- **Container Security**: Non-root user in backend container
 
 ## 📦 YOLO CLI Dataset Management
 
@@ -205,13 +207,9 @@ db.datasets.aggregate([
 Use the integrated YOLO CLI tool to download official datasets:
 
 ```bash
-# List available datasets
-python scripts/download_datasets.py list
+# Import specific datasets
 
-# Download specific datasets
-python scripts/download_datasets.py download coco8
-python scripts/download_datasets.py download coco128
-python scripts/download_datasets.py download coco
+Endpoint: /api/v1/datasets/import/yolo
 
 # Check dataset status
 python scripts/download_datasets.py status
@@ -268,7 +266,7 @@ python scripts/dynamic_dataset_uploader.py --force
 ### Manual Upload via API
 
 ```bash
-# Upload ZIP file
+# Import ZIP file
 curl -X POST "http://localhost:8000/api/v1/datasets/import/yolo" \
      -H "Content-Type: multipart/form-data" \
      -F "file=@dataset.zip" \
@@ -320,6 +318,112 @@ curl "http://localhost:8000/api/v1/datasets/{dataset_id}/images"
 
 # Delete dataset
 curl -X DELETE "http://localhost:8000/api/v1/datasets/{dataset_id}"
+```
+
+### YOLO Dataset Import with curl
+
+#### Basic YOLO Import
+
+```bash
+# Import YOLO dataset from ZIP file
+curl -X POST "http://localhost:8000/api/v1/datasets/import/yolo" \
+     -H "Content-Type: multipart/form-data" \
+     -F "file=@/path/to/your/dataset.zip" \
+     -F "dataset_name=my_custom_dataset"
+```
+
+#### Advanced YOLO Import with Options
+
+```bash
+# Import with custom description and settings
+curl -X POST "http://localhost:8000/api/v1/datasets/import/yolo" \
+     -H "Content-Type: multipart/form-data" \
+     -F "file=@/path/to/coco8_dataset.zip" \
+     -F "dataset_name=coco8_test" \
+     -F "description=COCO 8-image subset for testing" \
+     -v  # Verbose output for debugging
+```
+
+#### Example with Real Dataset
+
+```bash
+# First, create a test ZIP file from downloaded dataset
+cd backend/datasets
+zip -r coco8_test.zip coco8/
+
+# Then import it via API
+curl -X POST "http://localhost:8000/api/v1/datasets/import/yolo" \
+     -H "Content-Type: multipart/form-data" \
+     -F "file=@coco8_test.zip" \
+     -F "dataset_name=coco8_via_api" \
+     -F "description=COCO8 dataset imported via REST API"
+```
+
+#### Expected Response
+
+```json
+{
+  "message": "Dataset import started successfully",
+  "dataset_id": "9d3e9d4d-73d9-4f90-abd8-c6d00d199c57",
+  "status": "processing",
+  "dataset_name": "coco8_via_api",
+  "created_at": "2024-01-15T10:30:00Z"
+}
+```
+
+#### Check Import Status
+
+```bash
+# Check the status of the import operation
+curl "http://localhost:8000/api/v1/datasets/9d3e9d4d-73d9-4f90-abd8-c6d00d199c57/import/status"
+```
+
+#### Error Handling
+
+```bash
+# Import with error handling
+curl -X POST "http://localhost:8000/api/v1/datasets/import/yolo" \
+     -H "Content-Type: multipart/form-data" \
+     -F "file=@invalid_dataset.zip" \
+     -F "dataset_name=test_error" \
+     -w "\nHTTP Status: %{http_code}\n" \
+     -s -S  # Silent but show errors
+```
+
+#### YOLO Dataset Requirements
+
+Your ZIP file should contain:
+
+```
+dataset.zip
+├── images/
+│   ├── train/           # Training images (.jpg, .png)
+│   └── val/             # Validation images
+├── labels/
+│   ├── train/           # Training labels (.txt)
+│   └── val/             # Validation labels
+├── classes.txt          # Class names (optional)
+└── data.yaml           # YOLO config (optional)
+```
+
+#### Troubleshooting curl Commands
+
+```bash
+# Test server connectivity
+curl -I "http://localhost:8000/api/v1/datasets/"
+
+# Check file exists before upload
+ls -la /path/to/your/dataset.zip
+
+# Test with verbose output
+curl -X POST "http://localhost:8000/api/v1/datasets/import/yolo" \
+     -H "Content-Type: multipart/form-data" \
+     -F "file=@dataset.zip" \
+     -F "dataset_name=test" \
+     -v -L  # Verbose + follow redirects
+
+# Check server logs if upload fails
+docker-compose logs backend
 ```
 
 ### Response Examples
@@ -439,10 +543,12 @@ After successful setup:
 ## 📝 Development Notes
 
 - All datasets stored in `backend/datasets/`
-- MongoDB runs on `localhost:27017`
-- MongoDB Express web UI on `localhost:8081`
-- API server runs on `localhost:8000`
+- MongoDB runs on `127.0.0.1:27017` (localhost only)
+- MongoDB Express web UI on `127.0.0.1:8081` (localhost only)
+- API server runs on `127.0.0.1:8000` (localhost only)
+- All services secured with localhost-only binding
+- Backend container runs as non-root user
 - Logs available in `backend/logs/`
-- Use conda for dependency management
+- Use pip for dependency management (Docker) or conda (local)
 
 For issues or contributions, check the project repository.
