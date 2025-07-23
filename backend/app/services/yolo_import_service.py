@@ -2,6 +2,7 @@ import os
 import zipfile
 import tempfile
 import hashlib
+from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 from beanie import PydanticObjectId
@@ -105,6 +106,8 @@ class YoloImportService:
                 await self._process_yolo_files_chunked(dataset_path, dataset)
                 
                 # Update status to completed
+                if dataset.metadata is None:
+                    dataset.metadata = {}
                 dataset.metadata["processing_status"] = "completed"
                 await dataset.save()
                 
@@ -113,6 +116,8 @@ class YoloImportService:
                 
             except Exception as e:
                 # Update status to failed but keep dataset for debugging
+                if dataset.metadata is None:
+                    dataset.metadata = {}
                 dataset.metadata["processing_status"] = "failed"
                 dataset.metadata["error_message"] = str(e)
                 await dataset.save()
@@ -193,6 +198,8 @@ class YoloImportService:
                     continue
             
             # Update progress in dataset metadata
+            if dataset.metadata is None:
+                dataset.metadata = {}
             dataset.metadata["processed_images"] = processed_count
             await dataset.save()
             
@@ -602,6 +609,145 @@ class YoloImportService:
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow()
         )
+
+    async def add_chunk_to_dataset(
+        self,
+        dataset_id: str,
+        upload_id: str,
+        chunk_number: int,
+        total_chunks: int,
+        chunk_file: UploadFile
+    ) -> Dict:
+        """Add a chunk to an existing dataset for large file uploads."""
+        
+        logger.info(f"Receiving chunk {chunk_number + 1}/{total_chunks} for dataset {dataset_id}")
+        
+        try:
+            # Get the dataset
+            dataset = await Dataset.get(PydanticObjectId(dataset_id))
+            if not dataset:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Dataset not found: {dataset_id}"
+                )
+            
+            # Create temp directory for this upload session
+            temp_dir = Path(tempfile.gettempdir()) / f"chunked_upload_{upload_id}"
+            temp_dir.mkdir(exist_ok=True)
+            
+            # Save this chunk
+            chunk_path = temp_dir / f"chunk_{chunk_number:06d}"
+            with open(chunk_path, "wb") as buffer:
+                while chunk := await chunk_file.read(8192):
+                    buffer.write(chunk)
+            
+            logger.info(f"Saved chunk {chunk_number + 1}/{total_chunks} ({chunk_path.stat().st_size} bytes)")
+            
+            # Check if this is the final chunk
+            if chunk_number == total_chunks - 1:
+                logger.info("Final chunk received, assembling file...")
+                
+                # Assemble all chunks into final file
+                final_file_path = temp_dir / "assembled_dataset.zip"
+                with open(final_file_path, "wb") as final_file:
+                    for i in range(total_chunks):
+                        chunk_file_path = temp_dir / f"chunk_{i:06d}"
+                        if chunk_file_path.exists():
+                            with open(chunk_file_path, "rb") as chunk_f:
+                                final_file.write(chunk_f.read())
+                            # Clean up chunk file
+                            chunk_file_path.unlink()
+                        else:
+                            raise HTTPException(
+                                status_code=status.HTTP_400_BAD_REQUEST,
+                                detail=f"Missing chunk {i} for upload {upload_id}"
+                            )
+                
+                logger.info(f"File assembled: {final_file_path.stat().st_size} bytes")
+                
+                # Process the assembled file as a YOLO dataset
+                with open(final_file_path, "rb") as f:
+                    # Create a mock UploadFile for processing
+                    class MockUploadFile:
+                        def __init__(self, file_path):
+                            self.filename = "assembled_dataset.zip"
+                            self._file = open(file_path, "rb")
+                        
+                        async def read(self, size=-1):
+                            return self._file.read(size)
+                        
+                        def close(self):
+                            self._file.close()
+                    
+                    mock_file = MockUploadFile(final_file_path)
+                    
+                    try:
+                        # Process the dataset using existing logic
+                        await self._process_assembled_dataset(dataset, final_file_path)
+                        
+                        # Clean up
+                        final_file_path.unlink()
+                        temp_dir.rmdir()
+                        
+                        logger.info(f"Chunked upload completed for dataset {dataset_id}")
+                        
+                        return {
+                            "message": "Dataset upload completed successfully",
+                            "dataset_id": dataset_id,
+                            "upload_id": upload_id,
+                            "total_chunks": total_chunks,
+                            "status": "completed"
+                        }
+                        
+                    finally:
+                        mock_file.close()
+            
+            else:
+                # Not the final chunk, just acknowledge receipt
+                return {
+                    "message": f"Chunk {chunk_number + 1}/{total_chunks} received",
+                    "dataset_id": dataset_id,
+                    "upload_id": upload_id,
+                    "chunk_number": chunk_number,
+                    "status": "chunk_received"
+                }
+                
+        except Exception as e:
+            logger.error(f"Error processing chunk {chunk_number}: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error processing chunk: {str(e)}"
+            )
+    
+    async def _process_assembled_dataset(self, dataset: Dataset, file_path: Path):
+        """Process an assembled dataset file."""
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            
+            # Extract the ZIP file
+            logger.info("Extracting assembled dataset...")
+            with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                zip_ref.extractall(temp_path)
+            
+            # Find the dataset directory
+            dataset_path = self._find_dataset_root(temp_path)
+            if not dataset_path:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid YOLO dataset structure"
+                )
+            
+            # Process the dataset
+            await self._process_yolo_files_chunked(dataset_path, dataset)
+            
+            # Update dataset metadata
+            if dataset.metadata is None:
+                dataset.metadata = {}
+            dataset.metadata["processing_status"] = "completed"
+            await dataset.save()
+            
+            logger.info(f"Dataset processing completed for {dataset.id}")
 
 def get_yolo_import_service() -> YoloImportService:
     return YoloImportService()
