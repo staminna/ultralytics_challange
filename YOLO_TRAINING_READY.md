@@ -83,18 +83,6 @@ Both YAML files are properly configured with:
 3. **CLI Compatible**: Works with all standard YOLO commands
 4. **Scalable**: Ready to add more datasets using the same structure
 
-## 🚨 **Known Issues & Solutions**
-
-### Pandas/NumPy Warning (Non-blocking):
-- **Issue**: May see "numpy.dtype size changed" warning at end of training
-- **Impact**: Training completes successfully, only affects result saving
-- **Solution**: Use `save=False plots=False` flags to avoid the warning
-
-### Performance Tips:
-- **COCO8**: Perfect for quick tests and debugging
-- **COCO128**: Good for development and feature testing
-- **Batch Size**: Start with small batches (1-4) on CPU, increase on GPU
-
 ## 🎯 **Next Steps**
 
 1. **Test your models**: Use COCO8 for quick validation
