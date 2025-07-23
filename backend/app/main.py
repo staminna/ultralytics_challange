@@ -51,6 +51,10 @@ if settings.BACKEND_CORS_ORIGINS:
 def root_health_check():
     return {"status": "ok", "service": settings.PROJECT_NAME}
 
-@app.get(f"{settings.API_V1_STR}/health")
+@app.get("/health")
 def health_check():
+    return {"status": "ok", "service": settings.PROJECT_NAME, "timestamp": "2025-07-23T21:54:37+01:00"}
+
+@app.get(f"{settings.API_V1_STR}/health")
+def health_check_v1():
     return {"status": "ok", "service": settings.PROJECT_NAME}
