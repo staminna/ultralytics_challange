@@ -1,11 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api.routes import dataset_routes, model_routes, sample_routes
-from .core.config import get_settings
+from .api.v1.routes import dataset_routes
+from .core.config import settings
+from .core.database import connect_to_mongo, close_mongo_connection
 
 # Application settings
-settings = get_settings()
+settings = settings
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -23,9 +24,25 @@ app.add_middleware(
 )
 
 # Include API routes
-app.include_router(dataset_routes.router, prefix=settings.API_V1_STR)
-app.include_router(model_routes.router, prefix=settings.API_V1_STR)
-app.include_router(sample_routes.router, prefix=settings.API_V1_STR)
+app.include_router(dataset_routes.router, prefix="/api/v1", tags=["datasets"])
+
+@app.on_event("startup")
+async def startup_event():
+    await connect_to_mongo()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await close_mongo_connection()
+
+# Set all CORS enabled origins
+if settings.BACKEND_CORS_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.BACKEND_CORS_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 @app.get("/")
 def root_health_check():
