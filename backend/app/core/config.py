@@ -1,41 +1,37 @@
 import os
-from functools import lru_cache
+from typing import List
 
-from dotenv import load_dotenv
-from pydantic_settings import BaseSettings
+from pydantic import AnyHttpUrl
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Load environment variables from .env file
-load_dotenv()
 
 class Settings(BaseSettings):
-    """Application settings."""
-    
+    """Application settings loaded from environment variables and .env file."""
+
     # API settings
+    LOGLEVEL: str = os.getenv("LOGLEVEL", "info")
+    PROJECT_NAME: str = "YOLO Dataset Annotation API"
     API_V1_STR: str = "/api/v1"
-    PROJECT_NAME: str = "Dataset Annotation Service"
-    
+    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
+
+    # Database settings
+    DATABASE_URL: str
+    MONGO_DB: str = "ultralytics_annotation"
+
     # GCP settings
-    GCP_PROJECT_ID: str = os.getenv("GCP_PROJECT_ID", "annotation-project")
-    GCP_STORAGE_BUCKET: str = os.getenv("GCP_STORAGE_BUCKET", "annotation-datasets")
-    
-    # MongoDB settings
-    mongodb_uri: str = os.getenv("MONGODB_URI", "mongodb://localhost:27017/")
-    mongodb_name: str = os.getenv("MONGODB_DB", "ultralytics_annotation")
-    use_mongodb: bool = os.getenv("USE_MONGODB", "True").lower() == "true"
-    
-    # Performance settings
-    batch_size: int = int(os.getenv("BATCH_SIZE", "50"))  # Number of items to process in a batch
-    max_workers: int = int(os.getenv("MAX_WORKERS", "8"))  # Number of worker threads
-    
-    # Dataset settings
-    SUPPORTED_IMAGE_FORMATS: list = ["jpg", "jpeg", "png"]
-    MAX_IMAGE_SIZE_MB: int = 10  # Maximum image size in MB
-    
-    class Config:
-        case_sensitive = True
+    GCP_PROJECT_ID: str
+    GCP_STORAGE_BUCKET: str
+    GOOGLE_APPLICATION_CREDENTIALS: str
+
+    # This model_config tells Pydantic to load settings from the .env file
+    # located one directory up from the current file's location.
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding='utf-8',
+        case_sensitive=True,
+        extra='ignore'  # Ignore extra fields from .env that are not in the model
+    )
 
 
-@lru_cache()
-def get_settings() -> Settings:
-    """Get application settings as singleton."""
-    return Settings()
+# Create a single instance of the settings to be used throughout the application
+settings = Settings()
