@@ -28,12 +28,16 @@ class AutoAnnotateRequest(BaseModel):
     class_filter: Optional[List[int]] = None
     
 class FineTuneRequest(BaseModel):
+    model_config = {"protected_namespaces": ()}
+    
     dataset_id: str
     model_name: str
     epochs: int = 10
     batch_size: int = 16
     
 class ModelJobResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
+    
     status: str
     model_id: Optional[str] = None
     dataset_id: Optional[str] = None
