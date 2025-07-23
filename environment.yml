@@ -1,24 +1,52 @@
-name: dataset-annotation
+name: ultralytics-annotation
 channels:
-  - conda-forge
   - pytorch
+  - nvidia
+  - conda-forge
   - defaults
 dependencies:
   - python=3.12
-  # Core scientific computing with compatible versions
-  - numpy=1.26.4
-  - pandas=2.2.2
-  - scipy=1.13.0
-  # PyTorch ecosystem
-  - pytorch::pytorch=2.3.0
-  - pytorch::torchvision=0.18.0
-  - pytorch::torchaudio=2.3.0
-  # Image processing
-  - pillow=10.3.0
-  - opencv=4.9.0
-  # Development tools
-  - pip
-  - pytest=8.2.0
-  - pip:
-    # Install all pip dependencies from requirements.txt
-    - -r requirements.txt
+
+  # Core Web Framework
+  - fastapi
+  - uvicorn
+
+  # Database & ODM
+  - motor
+  - beanie
+
+  # Data Validation
+  - pydantic
+  - pydantic-settings
+  - email-validator
+
+  # Authentication
+  - python-jose[cryptography]
+  - passlib[bcrypt]
+
+  # Google Cloud Services
+  - google-cloud-storage
+
+  # YOLO & Computer Vision
+  - ultralytics
+  - opencv
+  - pytorch
+  - torchvision
+  - torchaudio
+  - cpuonly # Add this line if you are on a CPU-only machine
+
+  # Utilities
+  - requests
+  - tqdm
+  - pyyaml
+  - aiofiles
+  - python-multipart
+  - python-dotenv
+
+  # Development & Testing
+  - pytest
+  - pytest-asyncio
+  - black
+  - isort
+  - flake8
+  - mypy
