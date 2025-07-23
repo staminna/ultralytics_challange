@@ -77,7 +77,7 @@ backend/prediction_result.jpg
 # DATASET AND MEDIA FILES
 # ========================================
 
-# Image Files
+# Dataset and Media Files
 *.jpg
 *.jpeg
 *.png
@@ -85,23 +85,13 @@ backend/prediction_result.jpg
 *.bmp
 *.tiff
 *.webp
-*.svg
-
-# Video Files
 *.mp4
 *.avi
 *.mov
 *.mkv
-*.mpg
-*.mpeg
-*.wmv
-*.flv
 *.webm
-
-# Archive Files
 *.zip
 *.tar.gz
-*.tar
 *.rar
 *.7z
 *.gz
@@ -137,6 +127,11 @@ africa_animals/
 animals-in-jungle/
 large_yolo_dataset_1000/
 data/
+
+# Storage Directories (Local Development)
+storage/
+backend/storage/
+app/storage/
 
 # YOLO Training Outputs
 runs/
