@@ -10,7 +10,14 @@ from ..schemas.dataset_schema import DatasetCreate, ImageCreate, LabelCreate
 
 class DatasetService:
     def __init__(self):
-        self.bucket = get_storage_bucket()
+        self._bucket = None
+    
+    @property
+    def bucket(self):
+        """Lazy initialization of GCP storage bucket."""
+        if self._bucket is None:
+            self._bucket = get_storage_bucket()
+        return self._bucket
 
     async def get_datasets(self, skip: int = 0, limit: int = 10) -> List[Dataset]:
         """Retrieve datasets with pagination."""
