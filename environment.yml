@@ -37,11 +37,13 @@ dependencies:
 
   # Utilities
   - requests
+  - aiohttp
   - tqdm
   - pyyaml
   - aiofiles
   - python-multipart
   - python-dotenv
+  - rich
 
   # Development & Testing
   - pytest

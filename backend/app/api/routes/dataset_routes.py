@@ -5,13 +5,15 @@ import zipfile
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from fastapi import (APIRouter, BackgroundTasks, Depends, File, Form,
+from fastapi import (APIRouter, Depends, File, Form,
                      HTTPException, Query, UploadFile)
 
-from ...core.gcp import get_storage_bucket
+from ...core.storage import get_storage_backend
 from ...schemas.dataset import (Dataset, DatasetCreate, DatasetListResponse,
                                 DeleteResponse, ImageListResponse, ImageUpdate,
                                 LabelCreate, LabelUpdate, YoloImportRequest)
+from ...schemas.dataset_schema import DatasetImportResponse
+from ...models.firestore_models import Image
 from ...services.dataset_service import DatasetService
 from ...services.yolo_import_service import YoloImportService
 
@@ -45,7 +47,8 @@ async def list_datasets(
     
     This endpoint fulfills the core use case: List datasets
     """
-    datasets, total = await dataset_service.list_datasets(limit=limit, offset=offset)
+    datasets = await dataset_service.get_datasets(skip=offset, limit=limit)
+    total = len(datasets)  # For now, return the count of returned items
     return {
         "datasets": datasets,
         "total": total
@@ -76,11 +79,15 @@ async def list_dataset_images(
     
     This endpoint fulfills the core use case: List images with labels for a specific dataset
     """
-    images, total = await dataset_service.get_images_for_dataset(
+    images = await dataset_service.get_images_for_dataset(
         dataset_id=dataset_id, 
         limit=limit,
-        offset=offset
+        skip=offset
     )
+    
+    # Get total count for pagination
+    dataset_id_str = str(dataset_id)
+    total = await Image.find(Image.dataset_id == dataset_id_str).count()
     
     return {
         "images": images,
@@ -241,39 +248,37 @@ async def create_label_for_image(
     return label.to_dict()
 
 
-@router.post("/import/yolo", response_model=Dataset)
+@router.post("/import/yolo", response_model=DatasetImportResponse)
 async def import_yolo_dataset(
-    background_tasks: BackgroundTasks,
-    dataset_name: str = Form(...),
-    description: Optional[str] = Form(None),
-    class_names: Optional[List[str]] = Form([]),
-    zip_file: UploadFile = File(...),
+    file: UploadFile = File(...),
+    dataset_name: Optional[str] = Form(None),
     yolo_import_service: YoloImportService = Depends(get_yolo_import_service)
 ):
     """
-    Import a dataset in YOLO format.
+    Import a dataset in YOLO format with enhanced duplicate checking.
     
     This endpoint fulfills the core use case: Import dataset in YOLO format
     
     The uploaded file should be a ZIP archive containing:
-    - images/ directory with image files
+    - images/ directory with image files (supports train/val/test subdirectories)
     - labels/ directory with YOLO format label files (.txt)
-    - (optional) classes.txt with class names
+    - (optional) classes.txt or data.yaml with class definitions
     
-    For large datasets (>100MB), the upload will be processed asynchronously.
+    Features:
+    - Enhanced duplicate detection with name variations
+    - Local storage fallback when GCP credentials unavailable
+    - Comprehensive YOLO dataset structure validation
+    - Automatic cleanup on import failure
     """
-    if not zip_file.filename.endswith('.zip'):
+    if not file.filename.endswith('.zip'):
         raise HTTPException(
             status_code=400,
             detail="Uploaded file must be a ZIP archive"
         )
         
     return await yolo_import_service.import_yolo_dataset(
-        dataset_name=dataset_name,
-        description=description,
-        zip_file=zip_file,
-        class_names=class_names,
-        background_tasks=background_tasks
+        file=file,
+        dataset_name=dataset_name
     )
 
 

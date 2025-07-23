@@ -1,19 +1,20 @@
 from typing import List, Optional
 from pydantic import BaseModel, Field
-from beanie import Document, Link
-from uuid import UUID, uuid4
+from beanie import Document, Link, PydanticObjectId
+from bson import ObjectId
+from datetime import datetime
 
 class ClassDefinition(Document):
-    id: UUID = Field(default_factory=uuid4)
+    id: PydanticObjectId = Field(default_factory=PydanticObjectId, alias="_id")
     name: str
-    dataset_id: UUID
+    dataset_id: PydanticObjectId
 
     class Settings:
         name = "class_definitions"
 
 class Label(Document):
-    id: UUID = Field(default_factory=uuid4)
-    class_id: UUID
+    id: PydanticObjectId = Field(default_factory=PydanticObjectId, alias="_id")
+    class_id: PydanticObjectId
     x_center: float
     y_center: float
     width: float
@@ -23,8 +24,8 @@ class Label(Document):
         name = "labels"
 
 class Image(Document):
-    id: UUID = Field(default_factory=uuid4)
-    dataset_id: UUID
+    id: PydanticObjectId = Field(default_factory=PydanticObjectId, alias="_id")
+    dataset_id: PydanticObjectId
     file_name: str
     gcs_path: str
     width: int
@@ -35,10 +36,16 @@ class Image(Document):
         name = "images"
 
 class Dataset(Document):
-    id: UUID = Field(default_factory=uuid4)
+    id: PydanticObjectId = Field(default_factory=PydanticObjectId, alias="_id")
     name: str
     description: Optional[str] = None
+    format: Optional[str] = None  # e.g., "yolo", "coco", etc.
+    file_hash: Optional[str] = None
     gcs_path: Optional[str] = None
+    storage_path: Optional[str] = None
+    metadata: Optional[dict] = None  # For storing processing status, counts, etc.
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
     images: List[Link[Image]] = []
     classes: List[Link[ClassDefinition]] = []
 

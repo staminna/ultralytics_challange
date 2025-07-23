@@ -1,6 +1,8 @@
 from typing import List, Optional
 from pydantic import BaseModel, Field
 from uuid import UUID
+from beanie import PydanticObjectId
+from datetime import datetime
 
 # Base models for core entities
 class ClassDefinitionBase(BaseModel):
@@ -64,5 +66,26 @@ class Dataset(DatasetBase):
     images: List[Image] = []
     classes: List[ClassDefinition] = []
 
+    class Config:
+        from_attributes = True
+
+# Import response schema
+class DatasetImportResponse(BaseModel):
+    """Response schema for dataset import operations."""
+    id: str
+    name: str
+    description: Optional[str] = None
+    format: str
+    file_hash: str
+    processing_status: str
+    images_count: int
+    labels_count: int
+    processed_images: int
+    classes_count: int
+    original_filename: str
+    storage_path: str
+    created_at: datetime
+    updated_at: datetime
+    
     class Config:
         from_attributes = True

@@ -4,35 +4,61 @@ from uuid import UUID
 from fastapi import HTTPException, status
 
 from ..core.gcp import get_storage_bucket
-from ..models.mongo_models import Dataset, Image, Label, ClassDefinition
+from ..models.mongo_models import Dataset as DatasetModel, Image, Label, ClassDefinition
+from ..schemas.dataset import Dataset as DatasetSchema
 from ..schemas.dataset_schema import DatasetCreate, ImageCreate, LabelCreate
 
 
 class DatasetService:
     def __init__(self):
-        self.bucket = get_storage_bucket()
+        self._bucket = None
+    
+    @property
+    def bucket(self):
+        """Lazy initialization of GCP storage bucket."""
+        if self._bucket is None:
+            self._bucket = get_storage_bucket()
+        return self._bucket
 
-    async def get_datasets(self, skip: int = 0, limit: int = 10) -> List[Dataset]:
+    def _convert_to_schema(self, dataset_model: DatasetModel) -> DatasetSchema:
+        """Convert MongoDB model to API schema."""
+        return DatasetSchema(
+            id=str(dataset_model.id),
+            name=dataset_model.name,
+            description=dataset_model.description,
+            format=dataset_model.format,
+            file_hash=dataset_model.file_hash,
+            gcs_path=dataset_model.gcs_path,
+            storage_path=dataset_model.storage_path,
+            metadata=dataset_model.metadata,
+            created_at=dataset_model.created_at,
+            updated_at=dataset_model.updated_at,
+            image_count=len(dataset_model.images) if dataset_model.images else 0
+        )
+
+    async def get_datasets(self, skip: int = 0, limit: int = 10) -> List[DatasetSchema]:
         """Retrieve datasets with pagination."""
-        return await Dataset.find_all().skip(skip).limit(limit).to_list()
+        dataset_models = await DatasetModel.find_all().skip(skip).limit(limit).to_list()
+        return [self._convert_to_schema(dataset) for dataset in dataset_models]
 
-    async def get_dataset(self, dataset_id: UUID) -> Optional[Dataset]:
+    async def get_dataset(self, dataset_id: UUID) -> Optional[DatasetSchema]:
         """Retrieve a single dataset by its ID."""
-        return await Dataset.get(dataset_id, fetch_links=True)
+        dataset_model = await DatasetModel.get(dataset_id, fetch_links=True)
+        return self._convert_to_schema(dataset_model) if dataset_model else None
 
-    async def create_dataset(self, dataset_create: DatasetCreate) -> Dataset:
+    async def create_dataset(self, dataset_create: DatasetCreate) -> DatasetSchema:
         """Create a new dataset."""
         # Check if a dataset with the same name already exists
-        existing_dataset = await Dataset.find_one(Dataset.name == dataset_create.name)
+        existing_dataset = await DatasetModel.find_one(DatasetModel.name == dataset_create.name)
         if existing_dataset:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"Dataset with name '{dataset_create.name}' already exists."
             )
 
-        new_dataset = Dataset(**dataset_create.dict())
+        new_dataset = DatasetModel(**dataset_create.dict())
         await new_dataset.insert()
-        return new_dataset
+        return self._convert_to_schema(new_dataset)
 
     async def get_images_for_dataset(
         self, dataset_id: UUID, skip: int = 0, limit: int = 10
@@ -45,7 +71,9 @@ class DatasetService:
                 detail="Dataset not found"
             )
 
-        return await Image.find(Image.dataset_id == dataset_id).skip(skip).limit(limit).to_list()
+        # Convert UUID to string for MongoDB query
+        dataset_id_str = str(dataset_id)
+        return await Image.find(Image.dataset_id == dataset_id_str).skip(skip).limit(limit).to_list()
 
     async def upload_image_to_dataset(
         self, dataset_id: UUID, file: ImageCreate

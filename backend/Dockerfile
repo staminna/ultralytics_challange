@@ -1,26 +1,36 @@
-# Use an official Conda base image
-FROM continuumio/miniconda3:latest
+# Use Python 3.12 slim image for better security and smaller size
+FROM python:3.12-slim
 
 # Set the working directory
 WORKDIR /app
 
 # Prevent python from writing .pyc files and buffer streams
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-# Copy the environment file and create the Conda environment
-COPY ../environment.yml /app/environment.yml
-RUN conda env create -f /app/environment.yml
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
 
-# Make Conda available in the shell
-SHELL ["conda", "run", "-n", "ultralytics-annotation", "/bin/bash", "-c"]
+# Copy requirements file
+COPY ./requirements.txt /app/requirements.txt
+
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy the application source code into the container
-COPY . /app
+COPY ./backend /app
+
+# Create a non-root user for security
+RUN useradd --create-home --shell /bin/bash app && \
+    chown -R app:app /app
+USER app
 
 # Expose the port the app will run on
 EXPOSE 8000
 
 # The command to run when the container starts
-# This will run the application within the 'ultralytics-annotation' Conda environment
-CMD ["conda", "run", "-n", "ultralytics-annotation", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Bind to 0.0.0.0 inside container (Docker network isolation provides security)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
