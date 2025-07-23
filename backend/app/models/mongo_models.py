@@ -2,6 +2,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 from beanie import Document, Link, PydanticObjectId
 from bson import ObjectId
+from datetime import datetime
 
 class ClassDefinition(Document):
     id: PydanticObjectId = Field(default_factory=PydanticObjectId, alias="_id")
@@ -41,7 +42,10 @@ class Dataset(Document):
     format: Optional[str] = None  # e.g., "yolo", "coco", etc.
     file_hash: Optional[str] = None
     gcs_path: Optional[str] = None
+    storage_path: Optional[str] = None
     metadata: Optional[dict] = None  # For storing processing status, counts, etc.
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
     images: List[Link[Image]] = []
     classes: List[Link[ClassDefinition]] = []
 
