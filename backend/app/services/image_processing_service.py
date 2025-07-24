@@ -131,13 +131,10 @@ class ImageProcessingService:
                 # Create Image object
                 image = Image(
                     dataset_id=dataset_id,
-                    filename=metadata['filename'],
+                    file_name=metadata['filename'],
+                    gcs_path="",  # Will be set when uploaded to GCS
                     width=metadata['width'],
-                    height=metadata['height'],
-                    file_size=metadata['size_bytes'],
-                    file_hash=metadata['hash'],
-                    storage_path=None,  # Will be set when stored
-                    gcs_path=None       # Will be set when uploaded to GCS
+                    height=metadata['height']
                 )
                 
                 processed_images.append(image)
@@ -162,21 +159,21 @@ class ImageProcessingService:
         """
         try:
             # Generate storage path
-            storage_path = f"datasets/{image.dataset_id}/images/{image.filename}"
+            storage_path = f"datasets/{image.dataset_id}/images/{image.file_name}"
             
             # Store using the storage backend
             success = self.storage.store_file(image_path, storage_path)
             
             if success:
                 image.storage_path = storage_path
-                logger.debug(f"Stored image {image.filename} at {storage_path}")
+                logger.debug(f"Stored image {image.file_name} at {storage_path}")
                 return True
             else:
-                logger.error(f"Failed to store image {image.filename}")
+                logger.error(f"Failed to store image {image.file_name}")
                 return False
                 
         except Exception as e:
-            logger.error(f"Error storing image {image.filename}: {e}")
+            logger.error(f"Error storing image {image.file_name}: {e}")
             return False
     
     def find_corresponding_label_file(self, image_path: Path, labels_directories: List[Path]) -> Optional[Path]:
@@ -223,7 +220,7 @@ class ImageProcessingService:
                 # Keep images without hashes (shouldn't happen in normal flow)
                 unique_images.append(image)
             else:
-                logger.info(f"Removing duplicate image: {image.filename}")
+                logger.info(f"Removing duplicate image: {image.file_name}")
         
         if len(unique_images) != len(images):
             logger.info(f"Removed {len(images) - len(unique_images)} duplicate images")

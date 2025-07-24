@@ -259,7 +259,7 @@ class DatasetImportOrchestrator:
                 
                 # Store the image file
                 if not self.image_service.store_image(image_path, image):
-                    logger.warning(f"Failed to store image: {image.filename}")
+                    logger.warning(f"Failed to store image: {image.file_name}")
                     continue
                 
                 # Process corresponding labels
@@ -286,11 +286,10 @@ class DatasetImportOrchestrator:
         
         return Image(
             dataset_id=dataset_id,
-            filename=metadata['filename'],
+            file_name=metadata['filename'],
+            gcs_path="",  # Will be set later when uploaded to storage
             width=metadata['width'],
-            height=metadata['height'],
-            file_size=metadata['size_bytes'],
-            file_hash=metadata['hash']
+            height=metadata['height']
         )
     
     def _find_dataset_root(self, temp_path: Path) -> Optional[Path]:

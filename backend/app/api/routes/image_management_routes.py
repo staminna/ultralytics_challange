@@ -34,6 +34,9 @@ async def list_dataset_images(
             limit=limit
         )
         return images
+    except HTTPException:
+        # Re-raise HTTP exceptions (like 404 for non-existent dataset)
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving images: {str(e)}")
 
@@ -115,7 +118,7 @@ async def delete_image(
     return DeleteResponse(message="Image deleted successfully")
 
 
-@router.post("/{dataset_id}/images", response_model=ImageSchema)
+@router.post("/{dataset_id}/images")
 async def upload_image_to_dataset(
     dataset_id: str,
     image: UploadFile = File(...),

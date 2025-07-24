@@ -14,7 +14,7 @@ def test_current_datasets():
     try:
         response = requests.get(f"{API_BASE_URL}/datasets/", timeout=10)
         if response.status_code == 200:
-            datasets = response.json().get('datasets', [])
+            datasets = response.json()  # API returns list directly
             
             print("📊 Current Datasets:")
             print("-" * 80)

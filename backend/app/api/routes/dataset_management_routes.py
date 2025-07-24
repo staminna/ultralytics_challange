@@ -48,10 +48,9 @@ async def get_dataset(
     dataset_service: DatasetService = Depends(get_dataset_service)
 ):
     """Get a dataset by ID."""
-    dataset = await dataset_service.get_dataset(dataset_id)
-    if not dataset:
-        raise HTTPException(status_code=404, detail="Dataset not found")
-    return dataset
+    dataset_model = await dataset_service.get_dataset(dataset_id)
+    # Convert model to schema
+    return dataset_service._convert_to_schema(dataset_model)
 
 
 @router.delete("/{dataset_id}", response_model=DeleteResponse)

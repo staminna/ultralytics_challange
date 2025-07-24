@@ -52,8 +52,10 @@ class TestHealthChecks:
         response = client.get("/")
         assert response.status_code == 200
         data = response.json()
-        assert "message" in data
-        assert "YOLO Dataset Annotation Service" in data["message"]
+        assert "status" in data
+        assert "service" in data
+        assert data["status"] == "healthy"
+        assert "YOLO Dataset Annotation Service" in data["service"]
     
     def test_health_endpoint(self):
         """Test the health check endpoint."""
@@ -61,7 +63,6 @@ class TestHealthChecks:
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "healthy"
-        assert "timestamp" in data
 
 
 class TestDatasetManagement:

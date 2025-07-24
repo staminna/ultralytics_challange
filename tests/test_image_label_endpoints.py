@@ -311,8 +311,10 @@ class TestValidationFixes:
     
     def test_valid_dataset_creation(self):
         """Test that valid datasets are still accepted."""
+        import time
+        timestamp = int(time.time())
         valid_data = {
-            "name": "Valid Dataset Name",
+            "name": f"Valid Dataset Name {timestamp}",
             "description": "A valid description for the dataset"
         }
         

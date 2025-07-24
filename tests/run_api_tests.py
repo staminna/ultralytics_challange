@@ -145,9 +145,10 @@ class APITester:
         print("\n📊 Dataset Management Tests:")
         all_passed &= self.test_endpoint("GET", "/api/v1/datasets/", "List datasets")
         
-        # Test dataset creation
+        # Test dataset creation with unique name
+        timestamp = int(time.time())
         dataset_data = {
-            "name": "API Test Dataset",
+            "name": f"API Test Dataset {timestamp}",
             "description": "Dataset created during API testing",
             "is_public": False
         }
@@ -160,7 +161,7 @@ class APITester:
         print("\n📦 YOLO Import Tests:")
         zip_data = self.create_sample_yolo_zip()
         files = {"file": ("test_dataset.zip", zip_data, "application/zip")}
-        import_data = {"dataset_name": "Test YOLO Import"}
+        import_data = {"dataset_name": f"Test YOLO Import {timestamp}"}
         
         self.test_endpoint(
             "POST", "/api/v1/datasets/import/yolo", "YOLO dataset import",
