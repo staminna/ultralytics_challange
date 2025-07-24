@@ -45,7 +45,7 @@ def upload_yolo_dataset(zip_path: Path, dataset_name: str) -> dict:
         url = f"{API_BASE_URL}/datasets/import/yolo"
         
         with open(zip_path, 'rb') as f:
-            files = {'zip_file': (zip_path.name, f, 'application/zip')}
+            files = {'file': (zip_path.name, f, 'application/zip')}
             data = {'dataset_name': dataset_name}
             
             # Upload with timeout
@@ -76,7 +76,7 @@ def list_existing_datasets() -> list:
     try:
         response = requests.get(f"{API_BASE_URL}/datasets/")
         if response.status_code == 200:
-            datasets = response.json().get('datasets', [])
+            datasets = response.json()
             return [d['name'] for d in datasets]
         return []
     except:

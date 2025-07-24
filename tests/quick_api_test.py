@@ -65,11 +65,12 @@ def test_api_functionality() -> bool:
     print("-" * 30)
     
     try:
-        # Test dataset creation
+        # Test dataset creation with unique name
+        timestamp = int(time.time())
         dataset_data = {
-            "name": "Quick Test Dataset",
+            "name": f"Quick Test Dataset {timestamp}",
             "description": "Dataset for quick testing",
-            "is_public": False
+            "format": "yolo"
         }
         
         response = requests.post(f"{SERVER_URL}/api/v1/datasets/", json=dataset_data, timeout=10)

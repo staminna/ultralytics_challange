@@ -37,6 +37,7 @@ class ImageCreate(ImageBase):
 class DatasetCreate(DatasetBase):
     format: Optional[str] = "yolo"
     file_hash: Optional[str] = None
+    metadata: Optional[dict] = None
 
 # Schemas for reading entities (including ID)
 class ClassDefinition(ClassDefinitionBase):

@@ -540,6 +540,10 @@ After successful setup:
 
 ---
 
+$ pytest --cov=backend/app tests/
+
+---
+
 ## 📝 Development Notes
 
 - All datasets stored in `backend/datasets/`
