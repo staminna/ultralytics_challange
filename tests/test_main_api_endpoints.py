@@ -83,7 +83,7 @@ class TestDatasetManagement:
         assert data["name"] == SAMPLE_DATASET_DATA["name"]
         assert data["description"] == SAMPLE_DATASET_DATA["description"]
         assert "id" in data
-        return data["id"]  # Return for cleanup
+        # Test passes - dataset created successfully
     
     def test_create_dataset_invalid_data(self):
         """Test creating dataset with invalid data."""
