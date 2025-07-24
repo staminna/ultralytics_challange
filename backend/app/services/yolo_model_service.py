@@ -20,8 +20,8 @@ from PIL import Image as PILImage
 from ultralytics import YOLO
 
 from ..core.config import get_settings
-from ..core.gcp import get_firestore_client, get_storage_bucket
-from ..models.firestore_models import ClassDefinition, Dataset, Image, Label
+from ..core.gcp import get_storage_bucket
+from ..models.mongo_models import DatasetModel, ImageModel, LabelModel, ClassDefinitionModel
 
 # Get settings
 settings = get_settings()
