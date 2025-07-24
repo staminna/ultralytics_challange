@@ -229,3 +229,4 @@ yarn-error.log*
 # !INSTALLATION.md
 # !DATASET_SETUP.md
 *.temp
+backend/yolov8x.pt
