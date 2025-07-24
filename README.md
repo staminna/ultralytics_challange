@@ -29,6 +29,9 @@ python scripts/dynamic_dataset_uploader.py
 - [MongoDB Management](#mongodb-management)
 - [YOLO CLI Dataset Management](#yolo-cli-dataset-management)
 - [Dataset Upload to Datastore](#dataset-upload-to-datastore)
+- [Large Dataset Import](#large-dataset-import)
+- [Model Deployment to GCS](#model-deployment-to-gcs)
+- [Test Coverage and Unit Testing](#test-coverage-and-unit-testing)
 - [API Usage](#api-usage)
 - [Troubleshooting](#troubleshooting)
 
@@ -300,6 +303,308 @@ curl "http://localhost:8000/api/v1/datasets/{dataset_id}/import/status"
    📋 Dataset ID: 9d3e9d4d-73d9-4f90-abd8-c6d00d199c57
    ⏱️  Processing time: 2.3s
    💾 Total size: 6.2MB
+```
+
+## 📦 Large Dataset Import
+
+### Chunked Upload for Large Files (>1GB)
+
+For large datasets like COCO train2017 (18GB), use the chunked upload system:
+
+```bash
+# Import large dataset using chunked upload
+python scripts/upload_coco_chunked.py
+```
+
+#### Features of Chunked Upload
+- **Large File Support**: Handles files up to 100GB+
+- **Resume Capability**: Can resume interrupted uploads
+- **Progress Tracking**: Real-time progress with ETA
+- **Integrity Checking**: SHA256 hash verification
+- **Chunk Size**: Configurable (default: 10MB chunks)
+
+#### Manual Chunked Upload Configuration
+
+```python
+# Configuration in upload_coco_chunked.py
+COCO_FILE_PATH = "/path/to/your/large-dataset.zip"
+CHUNK_SIZE = 10 * 1024 * 1024  # 10MB chunks
+DATASET_NAME = "Your Large Dataset"
+DATASET_DESCRIPTION = "Description of your dataset"
+```
+
+#### Upload Progress Example
+
+```
+🚀 COCO Dataset Chunked Upload
+========================================
+✅ Server is healthy and ready
+📊 Calculating file hash for integrity checking...
+✅ File hash: 69a8bb58ea5f8f99d24875f21416de2e9ded3178e903f1f7603e283b9e06d929
+📋 Creating dataset metadata...
+🚀 Starting chunked upload...
+   File: coco-train2017-images.zip
+   Size: 18.01 GB
+   Chunk size: 10.0 MB
+   Total chunks: 1845
+📈 Progress: 17.7% (327/1845) - ETA: 2.9m
+```
+
+#### Alternative: Simple Import Script
+
+For smaller files (<1GB), use the simple import script:
+
+```bash
+# Import smaller datasets
+python scripts/import_dataset.py /path/to/dataset.zip "Dataset Name" --description="Description"
+```
+
+## ☁️ Model Deployment to GCS
+
+### Prerequisites for GCS Deployment
+
+1. **Google Cloud Project Setup**:
+   ```bash
+   # Install Google Cloud SDK
+   curl https://sdk.cloud.google.com | bash
+   exec -l $SHELL
+   gcloud init
+   ```
+
+2. **Create Service Account**:
+   ```bash
+   # Create service account
+   gcloud iam service-accounts create yolo-dataset-service \
+       --description="YOLO Dataset Annotation Service" \
+       --display-name="YOLO Dataset Service"
+   
+   # Grant necessary permissions
+   gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+       --member="serviceAccount:yolo-dataset-service@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+       --role="roles/storage.admin"
+   
+   # Create and download key
+   gcloud iam service-accounts keys create service-account-key.json \
+       --iam-account=yolo-dataset-service@YOUR_PROJECT_ID.iam.gserviceaccount.com
+   ```
+
+### Environment Configuration for GCS
+
+```bash
+# Set environment variables
+export GOOGLE_APPLICATION_CREDENTIALS="./service-account-key.json"
+export GCP_PROJECT_ID="your-project-id"
+export GCP_STORAGE_BUCKET="your-bucket-name"
+```
+
+### Model Upload to GCS
+
+```python
+# Example: Upload trained YOLO model to GCS
+from backend.app.core.gcp import get_storage_bucket
+
+def upload_model_to_gcs(local_model_path: str, gcs_model_path: str):
+    """Upload YOLO model to Google Cloud Storage."""
+    bucket = get_storage_bucket()
+    blob = bucket.blob(gcs_model_path)
+    
+    with open(local_model_path, 'rb') as model_file:
+        blob.upload_from_file(model_file)
+    
+    print(f"✅ Model uploaded to gs://{bucket.name}/{gcs_model_path}")
+    return f"gs://{bucket.name}/{gcs_model_path}"
+
+# Usage
+upload_model_to_gcs(
+    local_model_path="./models/yolo11n.pt",
+    gcs_model_path="models/yolo11n-trained.pt"
+)
+```
+
+### Automated Model Deployment Script
+
+```bash
+# Deploy model after training
+python scripts/deploy_model_to_gcs.py \
+    --model-path "./runs/train/exp/weights/best.pt" \
+    --model-name "yolo11-custom-trained" \
+    --version "v1.0"
+```
+
+### GCS Bucket Structure
+
+```
+your-bucket/
+├── models/
+│   ├── yolo11n.pt              # Base models
+│   ├── yolo11s.pt
+│   └── trained/
+│       ├── custom-v1.0.pt      # Custom trained models
+│       └── custom-v1.1.pt
+├── datasets/
+│   ├── raw/                    # Original datasets
+│   └── processed/              # Processed datasets
+└── exports/
+    ├── onnx/                   # ONNX exports
+    └── tensorrt/               # TensorRT exports
+```
+
+## 🧪 Test Coverage and Unit Testing
+
+### Running All Tests
+
+```bash
+# Run all tests with coverage
+pytest --cov=backend/app --cov-report=html --cov-report=term-missing
+
+# Run specific test suite
+pytest tests/test_final_coverage_push.py -v
+
+# Run tests with detailed output
+pytest tests/ -v --tb=short
+```
+
+### Test Coverage Reports
+
+#### Generate HTML Coverage Report
+
+```bash
+# Generate comprehensive coverage report
+pytest --cov=backend/app --cov-report=html --cov-report=term-missing
+
+# Open coverage report in browser
+open htmlcov/index.html
+```
+
+#### Current Coverage Status
+
+```
+Name                                                  Stmts   Miss  Cover   Missing
+-----------------------------------------------------------------------------------
+backend/app/core/config.py                              18      0   100%
+backend/app/core/database.py                            32     14    56%
+backend/app/core/gcp.py                                 14      0   100%
+backend/app/core/storage.py                             96     45    53%
+backend/app/core/storage_paths.py                       58      9    84%
+backend/app/services/chunked_upload_service.py         117     86    26%
+backend/app/services/dataset_service.py                149    112    25%
+backend/app/api/routes/dataset_management_routes.py     31     17    45%
+-----------------------------------------------------------------------------------
+TOTAL                                                 2306   1626    29%
+```
+
+### Test Suites Overview
+
+#### 1. Comprehensive Coverage Tests
+```bash
+# Main coverage test suite (22 tests)
+pytest tests/test_final_coverage_push.py
+```
+
+**Coverage Areas:**
+- ✅ Chunked Upload Service (5 tests)
+- ✅ Dataset Import Orchestrator (3 tests) 
+- ✅ Storage Backend Testing (3 tests)
+- ✅ Database Connection (2 tests)
+- ✅ API Routes Coverage (4 tests)
+- ✅ Service Methods (3 tests)
+- ✅ Configuration & Paths (2 tests)
+
+#### 2. API Integration Tests
+```bash
+# API endpoint tests
+pytest tests/test_api.py tests/test_api_integration.py
+```
+
+#### 3. Service-Specific Tests
+```bash
+# Individual service tests
+pytest tests/test_yolo_import.py
+pytest tests/test_image_label_endpoints.py
+pytest tests/test_main_api_endpoints.py
+```
+
+### Test Configuration
+
+#### pytest.ini Configuration
+```ini
+[tool:pytest]
+testpaths = tests
+python_files = test_*.py
+python_classes = Test*
+python_functions = test_*
+addopts = 
+    --strict-markers
+    --disable-warnings
+    --tb=short
+markers =
+    slow: marks tests as slow
+    integration: marks tests as integration tests
+    unit: marks tests as unit tests
+```
+
+#### Running Tests by Category
+
+```bash
+# Unit tests only
+pytest -m unit
+
+# Integration tests only  
+pytest -m integration
+
+# Skip slow tests
+pytest -m "not slow"
+
+# Run with parallel execution
+pytest -n auto  # Requires pytest-xdist
+```
+
+### Coverage Goals and Metrics
+
+#### Current Status
+- **Overall Coverage**: 29% (Target: 90%)
+- **Core Modules**: 100% (config, gcp)
+- **Services**: 25-56% (needs improvement)
+- **API Routes**: 35-45% (needs improvement)
+
+#### Coverage Improvement Plan
+1. **Phase 1**: Increase service coverage to 70%
+2. **Phase 2**: Improve API route coverage to 80%
+3. **Phase 3**: Add integration tests for 90% total coverage
+
+#### Test Quality Metrics
+```bash
+# Generate test quality report
+pytest --cov=backend/app --cov-report=html --cov-branch
+
+# Check for missing test coverage
+pytest --cov=backend/app --cov-fail-under=30
+```
+
+### Continuous Integration
+
+#### GitHub Actions Example
+```yaml
+name: Test Coverage
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+      - name: Run tests with coverage
+        run: |
+          pytest --cov=backend/app --cov-report=xml
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
 ```
 
 ## 🔌 API Usage
