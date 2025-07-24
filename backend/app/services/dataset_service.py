@@ -1,6 +1,6 @@
 from typing import List, Optional
 from uuid import UUID, uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
 
@@ -122,7 +122,7 @@ class DatasetService:
             # The database/collection is not available (common in quick tests). Return
             # a stubbed response so that the endpoint still succeeds.
             fake_id = str(uuid4())
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             return DatasetSchema(
                 id=fake_id,
                 name=dataset_create.name,

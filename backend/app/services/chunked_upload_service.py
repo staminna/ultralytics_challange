@@ -247,5 +247,5 @@ class ChunkedUploadService:
     
     def _get_timestamp(self):
         """Get current timestamp."""
-        from datetime import datetime
-        return datetime.utcnow()
+        from datetime import datetime, timezone
+        return datetime.now(timezone.utc)

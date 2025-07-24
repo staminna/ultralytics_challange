@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 
 from .api.routes import (
     dataset_management_routes,
@@ -13,13 +14,22 @@ from .core.database import connect_to_mongo, close_mongo_connection
 # Application settings
 settings = settings
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    await connect_to_mongo()
+    yield
+    # Shutdown
+    await close_mongo_connection()
+
 # Initialize FastAPI app with configuration for large file uploads
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     # Configure for large file uploads (up to 100GB)
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # Configure CORS
@@ -37,13 +47,7 @@ app.include_router(image_management_routes.router, prefix="/api/v1")
 app.include_router(label_management_routes.router, prefix="/api/v1")
 app.include_router(dataset_import_routes.router, prefix="/api/v1")
 
-@app.on_event("startup")
-async def startup_event():
-    await connect_to_mongo()
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    await close_mongo_connection()
 
 # Set all CORS enabled origins
 if settings.BACKEND_CORS_ORIGINS:

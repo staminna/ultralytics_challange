@@ -68,7 +68,7 @@ def test_server_status():
     try:
         response = requests.get(f"{API_BASE_URL}/datasets/", timeout=5)
         print(f"✅ Server is running (status: {response.status_code})")
-        return True
+        assert True
     except Exception as e:
         print(f"❌ Server not running: {e}")
         return False
