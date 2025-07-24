@@ -1,299 +1,327 @@
-# Dataset Annotation Backend API Documentation
+# YOLO Dataset Management API Documentation
 
-## Overview
+This document provides comprehensive instructions for using the YOLO Dataset Management API to import datasets, list datasets, and retrieve images with labels.
 
-This API provides core functionality for a dataset annotation service, supporting the import, listing, and management of datasets in YOLO format, with a particular focus on handling large datasets up to 100GB in size.
+## 🚀 Quick Start
 
-## Architecture
+### Prerequisites
+1. **Start the Server**
+   ```bash
+   cd backend
+   python server.py
+   ```
+   The server will run on `http://localhost:8000`
 
-- **Backend Framework**: FastAPI
-- **Database**: Firestore (GCP)
-- **Storage**: Cloud Storage (GCP)
-- **Authentication**: Service Account Key (GCP)
+2. **Access API Documentation**
+   - Interactive docs: `http://localhost:8000/docs`
+   - OpenAPI spec: `http://localhost:8000/api/v1/openapi.json`
 
-## Requirements
+## 📊 API Endpoints Overview
 
-- Python 3.12
-- Conda environment: `dataset-annotation`
-- GCP service account key (`service-account-key.json`)
-- Environment variables:
-  - `GOOGLE_APPLICATION_CREDENTIALS`: Path to service account key file
-  - `GCP_PROJECT_ID`: Google Cloud Platform project ID
-  - `GCP_STORAGE_BUCKET`: Cloud Storage bucket name
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/datasets/import/yolo` | POST | Import YOLO dataset from ZIP file |
+| `/api/v1/datasets/` | GET | List all datasets with pagination |
+| `/api/v1/datasets/{dataset_id}` | GET | Get specific dataset details |
+| `/api/v1/datasets/{dataset_id}/images` | GET | List images with labels for dataset |
+| `/api/v1/datasets/{dataset_id}/import/status` | GET | Check import/processing status |
 
-## Running the API
+---
 
-From the `backend` directory, run:
+## 1. 📦 Import a Dataset in YOLO Format
 
+### Endpoint
+```
+POST /api/v1/datasets/import/yolo
+```
+
+### Description
+Import a YOLO dataset from a ZIP file. Supports large datasets up to 100GB with automatic chunked processing.
+
+### Request Format
 ```bash
-uvicorn app.main:app --reload
+curl -X POST "http://localhost:8000/api/v1/datasets/import/yolo" \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@your_dataset.zip" \
+  -F "dataset_name=My Dataset Name"
 ```
 
-## Core API Endpoints
+### Parameters
+- **file** (required): ZIP file containing YOLO dataset
+- **dataset_name** (optional): Custom name for the dataset
 
-### 1. Import Dataset in YOLO Format
-
-#### Small Datasets (< 100MB)
-
-```http
-POST /api/v1/import/yolo
+### YOLO Dataset Structure
+Your ZIP file should contain:
+```
+dataset.zip
+├── images/
+│   ├── train/
+│   │   ├── image1.jpg
+│   │   └── image2.jpg
+│   └── val/
+│       ├── image3.jpg
+│       └── image4.jpg
+├── labels/
+│   ├── train/
+│   │   ├── image1.txt
+│   │   └── image2.txt
+│   └── val/
+│       ├── image3.txt
+│       └── image4.txt
+├── classes.txt (optional)
+└── data.yaml (optional)
 ```
 
-**Form Parameters:**
-- `dataset_name`: Name of the dataset (required)
-- `description`: Description of the dataset (optional)
-- `class_names`: List of class names for YOLO labels (optional)
-- `zip_file`: ZIP file containing YOLO dataset (required)
+### Example Usage
 
-**ZIP File Structure:**
-- `images/` directory with image files
-- `labels/` directory with YOLO format label files (.txt)
-- (optional) `classes.txt` with class names
+#### Basic Import
+```bash
+curl -X POST "http://localhost:8000/api/v1/datasets/import/yolo" \
+  -F "file=@coco8.zip" \
+  -F "dataset_name=COCO8 Dataset"
+```
 
-**Response:**
+#### Large Dataset Import
+```bash
+curl -X POST "http://localhost:8000/api/v1/datasets/import/yolo" \
+  -F "file=@large_dataset.zip" \
+  -F "dataset_name=Large YOLO Dataset" \
+  --max-time 3600
+```
+
+### Response Format
 ```json
 {
-  "id": "dataset-uuid",
-  "name": "traffic_signs",
-  "description": "Traffic sign dataset",
-  "storage_path": "datasets/dataset-uuid",
-  "created_at": "2025-07-21T12:34:56",
-  "updated_at": "2025-07-21T12:34:56",
-  "status": "ready",
-  "import_progress": 100,
-  "image_count": 0,
-  "error_message": null,
-  "upload_id": null,
-  "size_bytes": 5000000
+  "id": "507f1f77bcf86cd799439011",
+  "name": "COCO8 Dataset",
+  "description": "YOLO dataset imported from coco8.zip",
+  "format": "yolo",
+  "file_hash": "abc123def456...",
+  "processing_status": "completed",
+  "images_count": 8,
+  "labels_count": 6,
+  "processed_images": 8,
+  "classes_count": 80,
+  "original_filename": "coco8.zip"
 }
 ```
 
-#### Large Datasets (≥ 100MB)
+### Status Values
+- **processing**: Dataset is being processed
+- **completed**: Import successful
+- **failed**: Import failed (check logs)
 
-**1. Create the dataset record:**
-```http
-POST /api/v1/
+---
+
+## 2. 📋 List Datasets
+
+### Endpoint
+```
+GET /api/v1/datasets/
 ```
 
-**Request Body:**
+### Description
+Retrieve a paginated list of all imported datasets.
+
+### Request Format
+```bash
+curl -X GET "http://localhost:8000/api/v1/datasets/?skip=0&limit=10"
+```
+
+### Parameters
+- **skip** (optional): Number of records to skip (default: 0)
+- **limit** (optional): Maximum records to return (default: 10)
+
+### Example Usage
+
+#### List All Datasets
+```bash
+curl -X GET "http://localhost:8000/api/v1/datasets/"
+```
+
+#### Paginated Request
+```bash
+curl -X GET "http://localhost:8000/api/v1/datasets/?skip=10&limit=5"
+```
+
+### Response Format
 ```json
-{
-  "name": "traffic_signs_large",
-  "description": "Large traffic sign dataset"
-}
+[
+  {
+    "id": "507f1f77bcf86cd799439011",
+    "name": "COCO8 Dataset",
+    "description": "YOLO dataset imported from coco8.zip",
+    "format": "yolo",
+    "file_hash": "abc123def456...",
+    "gcs_path": "datasets/507f1f77bcf86cd799439011/",
+    "metadata": {
+      "processing_status": "completed",
+      "images_count": 8,
+      "labels_count": 6,
+      "processed_images": 8
+    },
+    "images": [],
+    "classes": []
+  }
+]
 ```
 
-**2. Upload chunks sequentially:**
-```http
-POST /api/v1/import/yolo/chunk
+---
+
+## 3. 🖼️ List Images with Labels for a Specific Dataset
+
+### Endpoint
+```
+GET /api/v1/datasets/{dataset_id}/images
 ```
 
-**Form Parameters:**
-- `dataset_id`: ID of the created dataset
-- `upload_id`: ID from the first chunk response
-- `chunk_number`: Index of this chunk (0-based)
-- `total_chunks`: Total number of chunks
-- `chunk_file`: Binary chunk data (part of the ZIP file)
+### Description
+Retrieve images and their associated labels for a specific dataset with pagination support.
 
-**Response:**
+### Request Format
+```bash
+curl -X GET "http://localhost:8000/api/v1/datasets/{dataset_id}/images?skip=0&limit=10"
+```
+
+### Parameters
+- **dataset_id** (required): Dataset ID from import response
+- **skip** (optional): Number of images to skip (default: 0)
+- **limit** (optional): Maximum images to return (default: 10)
+
+### Example Usage
+
+#### Get All Images for Dataset
+```bash
+curl -X GET "http://localhost:8000/api/v1/datasets/507f1f77bcf86cd799439011/images"
+```
+
+#### Paginated Images Request
+```bash
+curl -X GET "http://localhost:8000/api/v1/datasets/507f1f77bcf86cd799439011/images?skip=0&limit=5"
+```
+
+### Response Format
 ```json
-{
-  "upload_id": "upload-uuid",
-  "dataset_id": "dataset-uuid",
-  "chunk_number": 1,
-  "total_chunks": 10,
-  "status": "uploading"
-}
+[
+  {
+    "id": "507f1f77bcf86cd799439012",
+    "dataset_id": "507f1f77bcf86cd799439011",
+    "file_name": "image1.jpg",
+    "gcs_path": "datasets/507f1f77bcf86cd799439011/images/image1.jpg",
+    "width": 640,
+    "height": 480,
+    "labels": [
+      {
+        "id": "507f1f77bcf86cd799439013",
+        "class_id": "507f1f77bcf86cd799439014",
+        "x_center": 0.5,
+        "y_center": 0.3,
+        "width": 0.2,
+        "height": 0.4
+      }
+    ]
+  }
+]
 ```
 
-**3. Check import status:**
-```http
-GET /api/v1/import/status/{dataset_id}
+---
+
+## 🔍 Additional Endpoints
+
+### Get Specific Dataset
+```bash
+curl -X GET "http://localhost:8000/api/v1/datasets/507f1f77bcf86cd799439011"
 ```
 
-**Response:**
-```json
-{
-  "dataset_id": "dataset-uuid",
-  "status": "importing",
-  "import_progress": 45,
-  "image_count": 127,
-  "error_message": null,
-  "started_at": "2025-07-21T12:34:56",
-  "estimated_completion": "2025-07-21T12:45:00"
-}
+### Check Import Status
+```bash
+curl -X GET "http://localhost:8000/api/v1/datasets/507f1f77bcf86cd799439011/import/status"
 ```
 
-### 2. List Datasets
+---
 
-```http
-GET /api/v1/
+## 🛠️ Complete Workflow Example
+
+Here's a complete example workflow:
+
+### Step 1: Import Dataset
+```bash
+# Import a YOLO dataset
+curl -X POST "http://localhost:8000/api/v1/datasets/import/yolo" \
+  -F "file=@my_dataset.zip" \
+  -F "dataset_name=My Custom Dataset"
+
+# Response will include dataset_id
+# {"id": "507f1f77bcf86cd799439011", ...}
 ```
 
-**Query Parameters:**
-- `limit`: Maximum number of datasets to return (default: 100)
-- `offset`: Number of datasets to skip for pagination (default: 0)
-
-**Response:**
-```json
-{
-  "datasets": [
-    {
-      "id": "dataset-uuid",
-      "name": "traffic_signs",
-      "description": "Traffic sign dataset",
-      "storage_path": "datasets/dataset-uuid",
-      "created_at": "2025-07-21T12:34:56",
-      "updated_at": "2025-07-21T12:34:56",
-      "image_count": 250,
-      "status": "ready",
-      "import_progress": 100,
-      "error_message": null,
-      "upload_id": null,
-      "size_bytes": 25000000
-    }
-  ],
-  "total": 45
-}
+### Step 2: List All Datasets
+```bash
+# Verify the dataset was imported
+curl -X GET "http://localhost:8000/api/v1/datasets/"
 ```
 
-### 3. List Images with Labels for a Dataset
-
-```http
-GET /api/v1/{dataset_id}/images
+### Step 3: Get Images with Labels
+```bash
+# Use the dataset_id from step 1
+curl -X GET "http://localhost:8000/api/v1/datasets/507f1f77bcf86cd799439011/images"
 ```
 
-**Query Parameters:**
-- `limit`: Maximum number of images to return (default: 100)
-- `offset`: Number of images to skip for pagination (default: 0)
+---
 
-**Response:**
-```json
-{
-  "images": [
-    {
-      "id": "image-uuid",
-      "filename": "stop_sign_1.jpg",
-      "dataset_id": "dataset-uuid",
-      "storage_path": "datasets/dataset-uuid/images/stop_sign_1.jpg",
-      "width": 640,
-      "height": 480,
-      "created_at": "2025-07-21T12:34:56",
-      "updated_at": "2025-07-21T12:34:56",
-      "download_url": "https://storage.googleapis.com/...",
-      "labels": [
-        {
-          "id": "label-uuid",
-          "image_id": "image-uuid",
-          "class_id": 0,
-          "x_center": 0.5,
-          "y_center": 0.5,
-          "width": 0.3,
-          "height": 0.4,
-          "created_at": "2025-07-21T12:34:56",
-          "updated_at": "2025-07-21T12:34:56"
-        }
-      ]
-    }
-  ],
-  "total": 250,
-  "dataset_id": "dataset-uuid"
-}
+## 📊 Response Codes
+
+| Code | Description |
+|------|-------------|
+| 200 | Success |
+| 201 | Created (for imports) |
+| 400 | Bad Request (invalid dataset format) |
+| 404 | Dataset not found |
+| 422 | Validation Error |
+| 500 | Internal Server Error |
+
+---
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+#### 1. Import Fails with "Invalid YOLO dataset"
+- Ensure your ZIP contains `images/` and optionally `labels/` directories
+- Check that image files are in supported formats (jpg, jpeg, png, bmp, tiff)
+- Verify label files are in YOLO format (.txt)
+
+#### 2. Large Dataset Timeout
+- Use `--max-time 3600` in curl for large uploads
+- Check server logs for processing progress
+- Use the status endpoint to monitor progress
+
+#### 3. Dataset Not Found
+- Verify the dataset_id from the import response
+- Check that the import completed successfully
+
+### Server Logs
+Monitor server logs for detailed error information:
+```bash
+# In the backend directory
+python server.py
 ```
 
-## Data Models
+---
 
-### Dataset
+## 🚀 Performance Tips
 
-| Field           | Type      | Description                                     |
-|----------------|-----------|-------------------------------------------------|
-| id             | string    | Unique identifier                               |
-| name           | string    | Dataset name                                    |
-| description    | string    | Dataset description                             |
-| storage_path   | string    | Path in Cloud Storage                           |
-| created_at     | datetime  | Creation timestamp                              |
-| updated_at     | datetime  | Last update timestamp                           |
-| status         | string    | Status: pending, importing, finalizing, ready, error |
-| import_progress| int       | Import progress percentage (0-100)              |
-| error_message  | string    | Error message if status is "error"              |
-| image_count    | int       | Number of images in dataset                     |
-| upload_id      | string    | ID for chunked uploads                          |
-| size_bytes     | int       | Total size of dataset in bytes                  |
+1. **Large Datasets**: The system automatically uses chunked processing for datasets with many images
+2. **Pagination**: Use appropriate `skip` and `limit` parameters for large result sets
+3. **Monitoring**: Use the status endpoint to track import progress
+4. **Storage**: Images are stored efficiently with consistent directory structure
 
-### Image
+---
 
-| Field         | Type      | Description                                     |
-|--------------|-----------|-------------------------------------------------|
-| id           | string    | Unique identifier                               |
-| filename     | string    | Original filename                               |
-| dataset_id   | string    | Parent dataset ID                               |
-| storage_path | string    | Path in Cloud Storage                           |
-| width        | int       | Image width in pixels                           |
-| height       | int       | Image height in pixels                          |
-| created_at   | datetime  | Creation timestamp                              |
-| updated_at   | datetime  | Last update timestamp                           |
-| download_url | string    | Signed URL for image access                     |
-| labels       | Label[]   | Array of associated labels                      |
+## 📝 Notes
 
-### Label
-
-| Field       | Type      | Description                                     |
-|------------|-----------|-------------------------------------------------|
-| id         | string    | Unique identifier                               |
-| image_id   | string    | Parent image ID                                 |
-| class_id   | int       | Class identifier                                |
-| x_center   | float     | Normalized x-center of bounding box (0-1)       |
-| y_center   | float     | Normalized y-center of bounding box (0-1)       |
-| width      | float     | Normalized width of bounding box (0-1)          |
-| height     | float     | Normalized height of bounding box (0-1)         |
-| created_at | datetime  | Creation timestamp                              |
-| updated_at | datetime  | Last update timestamp                           |
-
-### Class Definition
-
-| Field       | Type      | Description                                     |
-|------------|-----------|-------------------------------------------------|
-| id         | string    | Unique identifier                               |
-| dataset_id | string    | Parent dataset ID                               |
-| class_id   | int       | Class identifier                                |
-| name       | string    | Class name                                      |
-| created_at | datetime  | Creation timestamp                              |
-| updated_at | datetime  | Last update timestamp                           |
-
-## Error Handling
-
-The API returns standard HTTP status codes:
-
-| Code | Description                                         |
-|------|-----------------------------------------------------|
-| 200  | Success                                             |
-| 201  | Created (for POST operations)                       |
-| 400  | Bad Request (invalid input)                         |
-| 404  | Not Found (resource doesn't exist)                  |
-| 500  | Server Error                                        |
-
-Error responses include a JSON body with an error message:
-
-```json
-{
-  "detail": "Error message describing the issue"
-}
-```
-
-## Handling Large Datasets
-
-For datasets up to 100GB, the system uses:
-
-1. **Chunked Uploads**: Breaks large files into manageable chunks
-2. **Background Processing**: Uses FastAPI's BackgroundTasks
-3. **Batch Processing**: Processes images and labels in batches
-4. **Status Tracking**: Provides progress updates via status endpoint
-5. **Cloud Storage Composition**: Efficiently reassembles chunks
-
-## Notes
-
-- The download_url for images contains a signed URL valid for 1 hour
-- Large dataset imports process asynchronously in the background
-- The API requires proper GCP authentication via service account key
-- YOLO format requires normalized bounding box coordinates (0-1)
-- The system automatically handles ZIP extraction and validation
+- Dataset IDs are MongoDB ObjectIds converted to strings
+- Images without labels are supported (for annotation purposes)
+- The system supports both local and Google Cloud Storage backends
+- All coordinates in labels are normalized (0.0 to 1.0)
+- The API automatically handles duplicate detection during import
