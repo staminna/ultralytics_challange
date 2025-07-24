@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl, ConfigDict
 
 
 # Base schemas
@@ -58,8 +58,7 @@ class Label(LabelBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class Image(ImageBase):
@@ -73,8 +72,7 @@ class Image(ImageBase):
     download_url: Optional[str] = None  # URL for frontend to access the image
     labels: List[Label] = []
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class Dataset(DatasetBase):
@@ -93,15 +91,13 @@ class Dataset(DatasetBase):
     upload_id: Optional[str] = None
     size_bytes: int = 0
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class DatasetWithImages(Dataset):
     images: List[Image] = []
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 # Request schemas for importing YOLO format datasets

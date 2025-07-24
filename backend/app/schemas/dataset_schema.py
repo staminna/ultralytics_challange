@@ -1,5 +1,5 @@
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from uuid import UUID
 from beanie import PydanticObjectId
 from datetime import datetime
@@ -44,14 +44,12 @@ class ClassDefinition(ClassDefinitionBase):
     id: UUID
     dataset_id: UUID
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class Label(LabelBase):
     id: UUID
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class Image(ImageBase):
     id: UUID
@@ -59,8 +57,7 @@ class Image(ImageBase):
     gcs_path: str
     labels: List[Label] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class Dataset(DatasetBase):
     id: UUID
@@ -68,8 +65,7 @@ class Dataset(DatasetBase):
     images: List[Image] = []
     classes: List[ClassDefinition] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Import response schema
 class DatasetImportResponse(BaseModel):
@@ -89,8 +85,7 @@ class DatasetImportResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Response schemas

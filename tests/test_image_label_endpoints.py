@@ -383,7 +383,7 @@ def test_server_connectivity():
         response = requests.get(f"{BASE_URL}/health", timeout=5)
         assert response.status_code == 200
         print("✅ Server is running and healthy")
-        return True
+        assert True
     except requests.exceptions.ConnectionError:
         pytest.skip("Server is not running. Start with: uvicorn app.main:app --reload")
         return False

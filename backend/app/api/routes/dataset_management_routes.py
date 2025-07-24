@@ -60,11 +60,6 @@ async def delete_dataset(
 ):
     """Delete a dataset and all its images and labels."""
     try:
-        # Convert string ID to ObjectId for MongoDB
-        from bson import ObjectId
-        if not ObjectId.is_valid(dataset_id):
-            raise HTTPException(status_code=400, detail="Invalid dataset ID format")
-        
         success = await dataset_service.delete_dataset(dataset_id)
         if not success:
             raise HTTPException(status_code=404, detail="Dataset not found")
