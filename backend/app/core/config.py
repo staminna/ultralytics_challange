@@ -34,3 +34,8 @@ class Settings(BaseSettings):
 
 # Create a single instance of the settings to be used throughout the application
 settings = Settings()
+
+
+def get_settings() -> Settings:
+    """Get the application settings instance."""
+    return settings

@@ -38,13 +38,39 @@ class DatasetService:
 
     async def get_datasets(self, skip: int = 0, limit: int = 10) -> List[DatasetSchema]:
         """Retrieve datasets with pagination."""
-        dataset_models = await DatasetModel.find_all().skip(skip).limit(limit).to_list()
-        return [self._convert_to_schema(dataset) for dataset in dataset_models]
+        try:
+            # Use a simple find query with proper await
+            cursor = DatasetModel.find().skip(skip).limit(limit)
+            dataset_models = await cursor.to_list(length=limit)
+            return [self._convert_to_schema(dataset) for dataset in dataset_models]
+        except Exception as e:
+            print(f"Error in get_datasets: {e}")
+            # Return empty list if there's an error
+            return []
 
-    async def get_dataset(self, dataset_id: UUID) -> Optional[DatasetSchema]:
+    async def get_dataset(self, dataset_id) -> Optional[DatasetSchema]:
         """Retrieve a single dataset by its ID."""
-        dataset_model = await DatasetModel.get(dataset_id, fetch_links=True)
-        return self._convert_to_schema(dataset_model) if dataset_model else None
+        try:
+            from bson import ObjectId
+            print(f"get_dataset called with dataset_id: {dataset_id} (type: {type(dataset_id)})")
+            
+            # Convert string ID to ObjectId for Beanie query
+            if isinstance(dataset_id, str):
+                object_id = ObjectId(dataset_id)
+            else:
+                object_id = dataset_id
+            
+            print(f"Converted to ObjectId: {object_id}")
+            # Remove fetch_links=True to avoid AsyncIOMotorLatentCommandCursor issues
+            dataset_model = await DatasetModel.get(object_id)
+            print(f"Dataset model found: {dataset_model is not None}")
+            
+            return self._convert_to_schema(dataset_model) if dataset_model else None
+        except Exception as e:
+            print(f"Error in get_dataset: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
 
     async def create_dataset(self, dataset_create: DatasetCreate) -> DatasetSchema:
         """Create a new dataset."""
@@ -61,19 +87,37 @@ class DatasetService:
         return self._convert_to_schema(new_dataset)
 
     async def get_images_for_dataset(
-        self, dataset_id: UUID, skip: int = 0, limit: int = 10
+        self, dataset_id, skip: int = 0, limit: int = 10
     ) -> List[Image]:
         """Retrieve images for a specific dataset."""
-        dataset = await self.get_dataset(dataset_id)
-        if not dataset:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Dataset not found"
-            )
+        try:
+            from bson import ObjectId
+            
+            # Convert string ID to ObjectId
+            if isinstance(dataset_id, str):
+                object_id = ObjectId(dataset_id)
+            else:
+                object_id = dataset_id
+            
+            # Check if dataset exists
+            dataset_model = await DatasetModel.get(object_id)
+            if not dataset_model:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Dataset not found"
+                )
 
-        # Convert UUID to string for MongoDB query
-        dataset_id_str = str(dataset_id)
-        return await Image.find(Image.dataset_id == dataset_id_str).skip(skip).limit(limit).to_list()
+            # Query images using ObjectId
+            cursor = Image.find(Image.dataset_id == object_id).skip(skip).limit(limit)
+            return await cursor.to_list(length=limit)
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"Error in get_images_for_dataset: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error retrieving images: {str(e)}"
+            )
 
     async def upload_image_to_dataset(
         self, dataset_id: UUID, file: ImageCreate

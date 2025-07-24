@@ -1,7 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api.routes import dataset_routes
+from .api.routes import (
+    dataset_management_routes,
+    image_management_routes,
+    label_management_routes,
+    dataset_import_routes
+)
 from .core.config import settings
 from .core.database import connect_to_mongo, close_mongo_connection
 
@@ -26,8 +31,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include API routes
-app.include_router(dataset_routes.router, prefix="/api/v1", tags=["datasets"])
+# Include API routes - now split into focused modules
+app.include_router(dataset_management_routes.router, prefix="/api/v1")
+app.include_router(image_management_routes.router, prefix="/api/v1")
+app.include_router(label_management_routes.router, prefix="/api/v1")
+app.include_router(dataset_import_routes.router, prefix="/api/v1")
 
 @app.on_event("startup")
 async def startup_event():
@@ -54,7 +62,3 @@ def root_health_check():
 @app.get("/health")
 def health_check():
     return {"status": "ok", "service": settings.PROJECT_NAME, "timestamp": "2025-07-23T21:54:37+01:00"}
-
-@app.get(f"{settings.API_V1_STR}/health")
-def health_check_v1():
-    return {"status": "ok", "service": settings.PROJECT_NAME}

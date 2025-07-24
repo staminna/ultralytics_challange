@@ -35,7 +35,8 @@ class ImageCreate(ImageBase):
     pass
 
 class DatasetCreate(DatasetBase):
-    pass
+    format: Optional[str] = "yolo"
+    file_hash: Optional[str] = None
 
 # Schemas for reading entities (including ID)
 class ClassDefinition(ClassDefinitionBase):
@@ -89,3 +90,25 @@ class DatasetImportResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+# Response schemas
+class DeleteResponse(BaseModel):
+    """Response schema for delete operations."""
+    message: str
+
+
+class ImageUpdate(BaseModel):
+    """Schema for updating image metadata."""
+    filename: Optional[str] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+
+
+class LabelUpdate(BaseModel):
+    """Schema for updating label data."""
+    class_id: Optional[int] = None
+    x_center: Optional[float] = None
+    y_center: Optional[float] = None
+    width: Optional[float] = None
+    height: Optional[float] = None
