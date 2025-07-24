@@ -13,7 +13,7 @@ from ...schemas.dataset import (Dataset, DatasetCreate, DatasetListResponse,
                                 DeleteResponse, ImageListResponse, ImageUpdate,
                                 LabelCreate, LabelUpdate, YoloImportRequest)
 from ...schemas.dataset_schema import DatasetImportResponse
-from ...models.firestore_models import Image
+from ...models.mongo_models import Image
 from ...services.dataset_service import DatasetService
 from ...services.yolo_import_service import YoloImportService
 

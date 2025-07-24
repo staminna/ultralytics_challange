@@ -34,8 +34,8 @@ class MongoDBService:
     def __init__(self):
         """Initialize MongoDB connection using settings."""
         self.settings = get_settings()
-        self.mongo_uri = self.settings.mongodb_uri
-        self.db_name = self.settings.mongodb_name
+        self.mongo_uri = self.settings.DATABASE_URL
+        self.db_name = self.settings.MONGO_DB
         self.client = None
         self.db = None
         self.connect()
