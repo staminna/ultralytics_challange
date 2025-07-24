@@ -191,6 +191,7 @@ backend/test_*.py
 backend/*-demo.sh
 backend/create_*.py
 !backend/create_memory.py
+backup-tmp
 
 # Monitoring and Debugging
 *.profile
