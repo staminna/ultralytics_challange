@@ -6,23 +6,23 @@ from datetime import datetime
 
 # Base models for core entities
 class ClassDefinitionBase(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1, max_length=100, description="Class name must be between 1 and 100 characters")
 
 class LabelBase(BaseModel):
     class_id: UUID
-    x_center: float
-    y_center: float
-    width: float
-    height: float
+    x_center: float = Field(..., ge=0.0, le=1.0, description="X center coordinate (0.0 to 1.0)")
+    y_center: float = Field(..., ge=0.0, le=1.0, description="Y center coordinate (0.0 to 1.0)")
+    width: float = Field(..., gt=0.0, le=1.0, description="Width (0.0 to 1.0)")
+    height: float = Field(..., gt=0.0, le=1.0, description="Height (0.0 to 1.0)")
 
 class ImageBase(BaseModel):
-    file_name: str
-    width: int
-    height: int
+    file_name: str = Field(..., min_length=1, max_length=255, description="Image filename must be between 1 and 255 characters")
+    width: int = Field(..., gt=0, le=50000, description="Image width must be between 1 and 50000 pixels")
+    height: int = Field(..., gt=0, le=50000, description="Image height must be between 1 and 50000 pixels")
 
 class DatasetBase(BaseModel):
-    name: str
-    description: Optional[str] = None
+    name: str = Field(..., min_length=1, max_length=255, description="Dataset name must be between 1 and 255 characters")
+    description: Optional[str] = Field(None, max_length=1000, description="Dataset description (optional, max 1000 characters)")
 
 # Schemas for creating new entities
 class ClassDefinitionCreate(ClassDefinitionBase):

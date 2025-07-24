@@ -3,9 +3,11 @@ Chunked upload service for handling large dataset uploads (up to 100GB).
 """
 import io
 import json
+import logging
 import os
 import tempfile
 import uuid
+from pathlib import Path
 from typing import BinaryIO, Dict, List, Optional
 
 from fastapi import HTTPException, UploadFile
@@ -13,6 +15,8 @@ from google.cloud import storage
 
 from ..core.config import get_settings
 from ..core.gcp import get_storage_bucket, get_storage_client
+
+logger = logging.getLogger(__name__)
 
 # Settings
 settings = get_settings()
@@ -25,8 +29,17 @@ class ChunkedUploadService:
     """
     
     def __init__(self):
-        self.bucket = get_storage_bucket()
-        self.storage_client = get_storage_client()
+        try:
+            self.bucket = get_storage_bucket()
+            self.storage_client = get_storage_client()
+            self.use_gcs = True
+            logger.info("ChunkedUploadService initialized with GCS")
+        except Exception as e:
+            logger.warning(f"GCS not available, using local storage: {str(e)}")
+            self.use_gcs = False
+            # Set up local storage
+            self.local_storage_path = Path("storage/chunked_uploads")
+            self.local_storage_path.mkdir(parents=True, exist_ok=True)
     
     async def initiate_chunked_upload(self, filename: str, total_size: int) -> Dict:
         """
@@ -53,44 +66,74 @@ class ChunkedUploadService:
             "created_at": str(self._get_timestamp()),
         }
         
-        # Store metadata in cloud storage
-        metadata_blob = self.bucket.blob(f"{temp_folder}/metadata.json")
-        metadata_blob.upload_from_string(
-            json.dumps(metadata),
-            content_type="application/json"
-        )
+        # Store metadata
+        if self.use_gcs:
+            metadata_blob = self.bucket.blob(f"{temp_folder}/metadata.json")
+            metadata_blob.upload_from_string(
+                json.dumps(metadata),
+                content_type="application/json"
+            )
+        else:
+            # Store metadata locally
+            metadata_file = self.local_storage_path / f"{upload_id}_metadata.json"
+            with open(metadata_file, 'w') as f:
+                json.dump(metadata, f, indent=2)
         
         return metadata
     
-    async def upload_chunk(self, upload_id: str, chunk_number: int, 
-                         total_chunks: int, chunk_data: UploadFile) -> Dict:
+    async def upload_chunk(self, dataset_id: str, upload_id: str, chunk_number: int, 
+                         total_chunks: int, chunk_file: UploadFile) -> Dict:
         """
         Upload a chunk of data for an existing upload.
         
         Args:
+            dataset_id: ID of the target dataset
             upload_id: ID from initiate_chunked_upload
             chunk_number: Index of current chunk (0-based)
             total_chunks: Total number of chunks expected
-            chunk_data: Binary data for this chunk
+            chunk_file: Binary data for this chunk
             
         Returns:
             Dict with updated upload status
         """
-        # Get metadata
+        # Get or create metadata
         metadata = await self._get_upload_metadata(upload_id)
         if not metadata:
-            raise HTTPException(status_code=404, detail="Upload not found")
+            # Auto-initialize upload if it doesn't exist
+            metadata = await self.initiate_chunked_upload(
+                filename=f"dataset_{dataset_id}.zip",
+                total_size=0  # Unknown size for chunked uploads
+            )
+            metadata["upload_id"] = upload_id
         
         if metadata["status"] == "completed":
             raise HTTPException(status_code=400, detail="Upload already completed")
             
         # Upload chunk
-        temp_folder = metadata["temp_folder"]
-        chunk_blob = self.bucket.blob(f"{temp_folder}/chunk_{chunk_number}")
-        
-        # Read chunk data
-        file_content = await chunk_data.read()
-        chunk_blob.upload_from_string(file_content)
+        try:
+            # Read chunk data
+            file_content = await chunk_file.read()
+            
+            if self.use_gcs:
+                # GCS upload
+                temp_folder = metadata["temp_folder"]
+                chunk_blob = self.bucket.blob(f"{temp_folder}/chunk_{chunk_number}")
+                chunk_blob.upload_from_string(file_content)
+                logger.info(f"Uploaded chunk {chunk_number} ({len(file_content)} bytes) to GCS {temp_folder}")
+            else:
+                # Local storage upload
+                upload_dir = self.local_storage_path / upload_id
+                upload_dir.mkdir(exist_ok=True)
+                chunk_path = upload_dir / f"chunk_{chunk_number:06d}"
+                with open(chunk_path, 'wb') as f:
+                    f.write(file_content)
+                logger.info(f"Uploaded chunk {chunk_number} ({len(file_content)} bytes) to local {chunk_path}")
+                # Update metadata for local storage
+                metadata["temp_folder"] = str(upload_dir)
+            
+        except Exception as e:
+            logger.error(f"Failed to upload chunk {chunk_number}: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Chunk upload failed: {str(e)}")
         
         # Update metadata
         chunks_received = metadata.get("chunks_received", 0) + 1
@@ -102,11 +145,18 @@ class ChunkedUploadService:
             metadata["status"] = "ready_for_finalization"
         
         # Update metadata in storage
-        metadata_blob = self.bucket.blob(f"{temp_folder}/metadata.json")
-        metadata_blob.upload_from_string(
-            json.dumps(metadata),
-            content_type="application/json"
-        )
+        if self.use_gcs:
+            temp_folder = metadata["temp_folder"]
+            metadata_blob = self.bucket.blob(f"{temp_folder}/metadata.json")
+            metadata_blob.upload_from_string(
+                json.dumps(metadata),
+                content_type="application/json"
+            )
+        else:
+            # Save metadata locally
+            metadata_file = self.local_storage_path / f"{upload_id}_metadata.json"
+            with open(metadata_file, 'w') as f:
+                json.dump(metadata, f, indent=2)
         
         return metadata
     
@@ -178,13 +228,22 @@ class ChunkedUploadService:
     
     async def _get_upload_metadata(self, upload_id: str) -> Optional[Dict]:
         """Get metadata for an existing upload."""
-        metadata_blob = self.bucket.blob(f"uploads/temp/{upload_id}/metadata.json")
-        
-        if not metadata_blob.exists():
-            return None
+        if self.use_gcs:
+            metadata_blob = self.bucket.blob(f"uploads/temp/{upload_id}/metadata.json")
             
-        metadata_content = metadata_blob.download_as_text()
-        return json.loads(metadata_content)
+            if not metadata_blob.exists():
+                return None
+                
+            metadata_content = metadata_blob.download_as_text()
+            return json.loads(metadata_content)
+        else:
+            # Local storage
+            metadata_file = self.local_storage_path / f"{upload_id}_metadata.json"
+            if not metadata_file.exists():
+                return None
+            
+            with open(metadata_file, 'r') as f:
+                return json.load(f)
     
     def _get_timestamp(self):
         """Get current timestamp."""

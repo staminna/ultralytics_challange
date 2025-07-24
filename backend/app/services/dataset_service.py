@@ -52,7 +52,6 @@ class DatasetService:
         """Retrieve a single dataset by its ID."""
         try:
             from bson import ObjectId
-            print(f"get_dataset called with dataset_id: {dataset_id} (type: {type(dataset_id)})")
             
             # Convert string ID to ObjectId for Beanie query
             if isinstance(dataset_id, str):
@@ -60,16 +59,13 @@ class DatasetService:
             else:
                 object_id = dataset_id
             
-            print(f"Converted to ObjectId: {object_id}")
             # Remove fetch_links=True to avoid AsyncIOMotorLatentCommandCursor issues
             dataset_model = await DatasetModel.get(object_id)
-            print(f"Dataset model found: {dataset_model is not None}")
             
             return self._convert_to_schema(dataset_model) if dataset_model else None
         except Exception as e:
+            # Log error for debugging but don't expose internal details
             print(f"Error in get_dataset: {e}")
-            import traceback
-            traceback.print_exc()
             return None
 
     async def create_dataset(self, dataset_create: DatasetCreate) -> DatasetSchema:
