@@ -41,7 +41,7 @@ COCO_CLASSES = [
 ]
 
 class YOLOModelService:
-    """Service for working with YOLOv8-X model."""
+    """Service for working with YOLOv11 model."""
     
     def __init__(self):
         """Initialize the YOLO model service."""
@@ -49,7 +49,7 @@ class YOLOModelService:
         self.bucket = get_storage_bucket()
         self.settings = get_settings()
         self.model = None
-        self.model_path = Path(os.getenv("YOLOV8_MODEL_PATH", "yolov8x.pt"))
+        self.model_path = Path(os.getenv("YOLO11_MODEL_PATH", "yolo11x.pt"))
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
         # Firestore collections
@@ -58,32 +58,32 @@ class YOLOModelService:
         self.MODEL_COLLECTION = "models"
         
     async def load_model(self) -> None:
-        """Load YOLOv8-X model."""
+        """Load YOLO11 model."""
         try:
-            print(f"Loading YOLOv8-X model on {self.device}...")
+            print(f"Loading YOLO11 model on {self.device}...")
             
             # Download model if not available locally
             if not os.path.exists(self.model_path):
-                print(f"Downloading YOLOv8-X model...")
-                self.model = YOLO("yolov8x.pt")  # This will download the model automatically
+                print(f"Downloading YOLO11 model...")
+                self.model = YOLO("yolo11x.pt")  # This will download the model automatically
                 # Save model to the specified path
                 self.model_path.parent.mkdir(parents=True, exist_ok=True)
                 self.model.save(str(self.model_path))
             else:
                 self.model = YOLO(self.model_path)
                 
-            print(f"YOLOv8-X model loaded successfully")
+            print(f"YOLOv11 model loaded successfully")
             return self.model
         except Exception as e:
-            print(f"Error loading YOLOv8-X model: {str(e)}")
+            print(f"Error loading YOLOv11 model: {str(e)}")
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to load YOLOv8-X model: {str(e)}"
+                detail=f"Failed to load YOLOv11 model: {str(e)}"
             )
     
     async def predict(self, image_data: bytes, confidence: float = 0.25) -> List[Dict[str, Any]]:
         """
-        Run prediction on an image using YOLOv8-X.
+        Run prediction on an image using YOLOv11.
         
         Args:
             image_data: The image bytes to run prediction on

@@ -124,27 +124,49 @@ class DatasetService:
 
         await image.delete()
 
-    async def delete_dataset(self, dataset_id: UUID) -> None:
-        """Delete a dataset and its associated images and GCS files."""
-        dataset = await self.get_dataset(dataset_id)
-        if not dataset:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Dataset not found"
-            )
+    async def delete_dataset(self, dataset_id: str) -> bool:
+        """Delete a dataset and its associated images and storage files."""
+        try:
+            from bson import ObjectId
+            
+            # Convert string to ObjectId
+            if not ObjectId.is_valid(dataset_id):
+                return False
+                
+            obj_id = ObjectId(dataset_id)
+            
+            # Find the dataset
+            dataset_model = await DatasetModel.get(obj_id)
+            if not dataset_model:
+                return False
 
-        # Delete associated images from GCS
-        if dataset.images:
-            for image_link in dataset.images:
-                image = await Image.get(image_link.id)
-                if image and image.gcs_path:
-                    blob = self.bucket.blob(image.gcs_path)
-                    if blob.exists():
-                        blob.delete()
+            # Delete associated images from storage if they exist
+            if dataset_model.images:
+                for image in dataset_model.images:
+                    try:
+                        # Delete from storage if GCS path exists
+                        if hasattr(image, 'gcs_path') and image.gcs_path:
+                            blob = self.bucket.blob(image.gcs_path)
+                            if blob.exists():
+                                blob.delete()
+                        
+                        # Delete from local storage if storage_path exists
+                        if hasattr(image, 'storage_path') and image.storage_path:
+                            import os
+                            if os.path.exists(image.storage_path):
+                                os.remove(image.storage_path)
+                                
+                    except Exception as e:
+                        print(f"Warning: Failed to delete image storage for {image.id}: {e}")
+                        # Continue with deletion even if storage cleanup fails
 
-        # Delete dataset from MongoDB
-        await dataset.delete()
-        return
+            # Delete the dataset from MongoDB
+            await dataset_model.delete()
+            return True
+            
+        except Exception as e:
+            print(f"Error deleting dataset {dataset_id}: {e}")
+            return False
 
     async def create_label(self, image_id: UUID, label_create: LabelCreate) -> Label:
         """Create a label for an image."""

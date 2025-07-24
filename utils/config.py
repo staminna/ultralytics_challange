@@ -14,7 +14,7 @@ class Config:
     GCP_DATASTORE_KIND: str = "YoloDataset"
     
     # Training defaults
-    DEFAULT_MODEL: str = "yolov8n.pt"
+    DEFAULT_MODEL: str = "yolo11n.pt"
     DEFAULT_EPOCHS: int = 100
     DEFAULT_IMG_SIZE: int = 640
     

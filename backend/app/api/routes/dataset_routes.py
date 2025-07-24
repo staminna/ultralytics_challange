@@ -173,10 +173,19 @@ async def delete_dataset(
     dataset_service: DatasetService = Depends(get_dataset_service)
 ):
     """Delete a dataset and all its images and labels."""
-    success = await dataset_service.delete_dataset(dataset_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Dataset not found")
-    return DeleteResponse(message="Dataset deleted successfully")
+    try:
+        # Convert string ID to ObjectId for MongoDB
+        from bson import ObjectId
+        if not ObjectId.is_valid(dataset_id):
+            raise HTTPException(status_code=400, detail="Invalid dataset ID format")
+        
+        success = await dataset_service.delete_dataset(dataset_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Dataset not found")
+        return DeleteResponse(message="Dataset deleted successfully")
+    except Exception as e:
+        print(f"Delete dataset error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete dataset: {str(e)}")
 
 
 @router.get("/labels/{label_id}", response_model=Dict[str, Any])
